@@ -298,8 +298,17 @@ def course_detail(course_id):
     )
     discussions = cur.fetchall()
 
+    # Kiểm tra user đã đăng ký chưa
+    is_enrolled = False
+    if 'user_id' in session:
+        cur.execute(
+            "SELECT id FROM dang_ky_khoa_hoc WHERE user_id=%s AND khoa_hoc_id=%s AND trang_thai='active'",
+            (session['user_id'], course_id),
+        )
+        is_enrolled = cur.fetchone() is not None
+
     cur.close()
-    return render_template('course_detail.html', course=course, details=details, reviews=reviews, discussions=discussions)
+    return render_template('course_detail.html', course=course, details=details, reviews=reviews, discussions=discussions, is_enrolled=is_enrolled)
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -433,9 +442,12 @@ def dashboard():
         return render_template('teacher/dashboard.html', my_courses=my_courses)
     
     elif role == 'admin':
-        # Thống kê admin
+        # Thống kê admin đầy đủ
         cur.execute("SELECT COUNT(*) as total FROM users WHERE role = 'student'")
         total_students = cur.fetchone()['total']
+        
+        cur.execute("SELECT COUNT(*) as total FROM users WHERE role = 'teacher'")
+        total_teachers = cur.fetchone()['total']
         
         cur.execute("SELECT COUNT(*) as total FROM khoa_hoc")
         total_courses = cur.fetchone()['total']
@@ -443,50 +455,55 @@ def dashboard():
         cur.execute("SELECT COUNT(*) as total FROM dang_ky_khoa_hoc WHERE trang_thai = 'active'")
         total_enrollments = cur.fetchone()['total']
         
+        # Số lớp học trong ngày hôm nay
+        today = datetime.now().date()
+        cur.execute("""
+            SELECT COUNT(*) as total 
+            FROM lich_hoc 
+            WHERE DATE(ngay_hoc) = %s
+        """, (today,))
+        classes_today = cur.fetchone()['total']
+        
+        # Doanh thu (tổng tiền đã thanh toán)
+        cur.execute("""
+            SELECT COALESCE(SUM(amount), 0) as total_revenue 
+            FROM payments 
+            WHERE status = 'paid'
+        """)
+        total_revenue = cur.fetchone()['total_revenue'] or 0
+        
+        # Doanh thu hôm nay
+        cur.execute("""
+            SELECT COALESCE(SUM(amount), 0) as today_revenue 
+            FROM payments 
+            WHERE status = 'paid' AND DATE(created_at) = %s
+        """, (today,))
+        today_revenue = cur.fetchone()['today_revenue'] or 0
+        
         cur.close()
         return render_template('admin/dashboard.html', 
                              total_students=total_students,
+                             total_teachers=total_teachers,
                              total_courses=total_courses,
-                             total_enrollments=total_enrollments)
+                             total_enrollments=total_enrollments,
+                             classes_today=classes_today,
+                             total_revenue=total_revenue,
+                             today_revenue=today_revenue)
     
     cur.close()
     return redirect(url_for('index'))
 
 # ==================== API ROUTES ====================
 
-@app.route('/api/enroll/<int:course_id>', methods=['POST'])
-@login_required
-def enroll_course(course_id):
-    """Đăng ký khóa học"""
-    user_id = session['user_id']
-    
-    cur = mysql.connection.cursor()
-    
-    # Kiểm tra đã đăng ký chưa
-    cur.execute("""
-        SELECT id FROM dang_ky_khoa_hoc 
-        WHERE user_id = %s AND khoa_hoc_id = %s
-    """, (user_id, course_id))
-    
-    if cur.fetchone():
-        cur.close()
-        return jsonify({'success': False, 'message': 'Bạn đã đăng ký khóa học này'}), 400
-    
-    # Đăng ký
-    cur.execute("""
-        INSERT INTO dang_ky_khoa_hoc (user_id, khoa_hoc_id, trang_thai)
-        VALUES (%s, %s, 'active')
-    """, (user_id, course_id))
-    mysql.connection.commit()
-    cur.close()
-    
-    return jsonify({'success': True, 'message': 'Đăng ký thành công!'})
+# Route enroll cũ đã được thay thế bằng buy_course (yêu cầu thanh toán)
 
 # ==================== THANH TOÁN / MUA KHÓA HỌC ====================
 
 @app.route('/course/<int:course_id>/buy', methods=['POST'])
 @login_required
 def buy_course(course_id):
+    """Mua khóa học - yêu cầu thanh toán"""
+    user_id = session['user_id']
     cur = mysql.connection.cursor()
     ensure_extended_tables(cur)
 
@@ -497,40 +514,39 @@ def buy_course(course_id):
         cur.close()
         return jsonify({'success': False, 'message': 'Khóa học không tồn tại'}), 404
 
+    # Kiểm tra đã đăng ký chưa
+    cur.execute(
+        "SELECT id FROM dang_ky_khoa_hoc WHERE user_id=%s AND khoa_hoc_id=%s",
+        (user_id, course_id),
+    )
+    if cur.fetchone():
+        cur.close()
+        return jsonify({'success': False, 'message': 'Bạn đã đăng ký khóa học này rồi'}), 400
+
     amount = course.get('gia', 0) or 0
 
-    # Tạo bản ghi thanh toán giả lập (đã thanh toán)
+    # Tạo bản ghi thanh toán (giả lập - tự động thành công)
+    txn_ref = f'TXN-{course_id}-{user_id}-{int(datetime.now().timestamp())}'
     cur.execute(
         """
         INSERT INTO payments (user_id, khoa_hoc_id, amount, provider, status, txn_ref)
         VALUES (%s,%s,%s,%s,%s,%s)
         """,
-        (session['user_id'], course_id, amount, 'sandbox', 'paid', f'TXN-{course_id}-{session["user_id"]}-{int(datetime.now().timestamp())}'),
+        (user_id, course_id, amount, 'sandbox', 'paid', txn_ref),
     )
 
-    # Ghi enrollment (upsert)
+    # Ghi enrollment sau khi thanh toán thành công
     cur.execute(
-        "SELECT id FROM dang_ky_khoa_hoc WHERE user_id=%s AND khoa_hoc_id=%s",
-        (session['user_id'], course_id),
+        """
+        INSERT INTO dang_ky_khoa_hoc (user_id, khoa_hoc_id, trang_thai)
+        VALUES (%s,%s,'active')
+        """,
+        (user_id, course_id),
     )
-    existing = cur.fetchone()
-    if existing:
-        cur.execute(
-            "UPDATE dang_ky_khoa_hoc SET trang_thai='active', updated_at=CURRENT_TIMESTAMP WHERE id=%s",
-            (existing['id'],),
-        )
-    else:
-        cur.execute(
-            """
-            INSERT INTO dang_ky_khoa_hoc (user_id, khoa_hoc_id, trang_thai)
-            VALUES (%s,%s,'active')
-            """,
-            (session['user_id'], course_id),
-        )
 
     mysql.connection.commit()
     cur.close()
-    return jsonify({'success': True, 'message': 'Thanh toán thành công, bạn đã được ghi danh!'})
+    return jsonify({'success': True, 'message': f'Thanh toán thành công {amount:,.0f} VNĐ! Bạn đã được ghi danh vào khóa học.'})
 
 # ==================== CHỨC NĂNG NÂNG CAO 1: HỆ THỐNG ĐÁNH GIÁ ====================
 
@@ -910,6 +926,165 @@ def create_notification():
     cur.close()
     
     return render_template('admin/create_notification.html', courses=courses)
+
+# ==================== QUẢN LÝ ADMIN ====================
+
+@app.route('/admin/teachers')
+@admin_required
+def admin_teachers():
+    """Quản lý giáo viên"""
+    cur = mysql.connection.cursor()
+    cur.execute("""
+        SELECT u.*, COUNT(kh.id) as so_lop_hoc
+        FROM users u
+        LEFT JOIN khoa_hoc kh ON u.id = kh.teacher_id
+        WHERE u.role = 'teacher'
+        GROUP BY u.id
+        ORDER BY u.created_at DESC
+    """)
+    teachers = cur.fetchall()
+    cur.close()
+    return render_template('admin/teachers.html', teachers=teachers)
+
+@app.route('/admin/teachers/create', methods=['GET', 'POST'])
+@admin_required
+def admin_create_teacher():
+    """Tạo giáo viên mới"""
+    if request.method == 'POST':
+        ho_ten = request.form.get('ho_ten')
+        email = request.form.get('email')
+        password = request.form.get('password')
+        so_dien_thoai = request.form.get('so_dien_thoai', '')
+        
+        cur = mysql.connection.cursor()
+        cur.execute("SELECT id FROM users WHERE email = %s", (email,))
+        if cur.fetchone():
+            flash('Email đã được sử dụng', 'danger')
+            cur.close()
+            return render_template('admin/create_teacher.html')
+        
+        password_hash = generate_password_hash(password)
+        cur.execute("""
+            INSERT INTO users (ho_ten, email, password_hash, so_dien_thoai, role)
+            VALUES (%s, %s, %s, %s, 'teacher')
+        """, (ho_ten, email, password_hash, so_dien_thoai))
+        mysql.connection.commit()
+        cur.close()
+        
+        flash('Tạo giáo viên thành công!', 'success')
+        return redirect(url_for('admin_teachers'))
+    
+    return render_template('admin/create_teacher.html')
+
+@app.route('/admin/teachers/<int:teacher_id>/delete', methods=['POST'])
+@admin_required
+def admin_delete_teacher(teacher_id):
+    """Xóa giáo viên"""
+    cur = mysql.connection.cursor()
+    cur.execute("SELECT role FROM users WHERE id = %s", (teacher_id,))
+    user = cur.fetchone()
+    if not user or user['role'] != 'teacher':
+        flash('Không tìm thấy giáo viên', 'danger')
+        cur.close()
+        return redirect(url_for('admin_teachers'))
+    
+    cur.execute("DELETE FROM users WHERE id = %s", (teacher_id,))
+    mysql.connection.commit()
+    cur.close()
+    flash('Đã xóa giáo viên', 'success')
+    return redirect(url_for('admin_teachers'))
+
+@app.route('/admin/courses')
+@admin_required
+def admin_courses():
+    """Quản lý khóa học"""
+    cur = mysql.connection.cursor()
+    cur.execute("""
+        SELECT kh.*, u.ho_ten as teacher_name,
+               COUNT(DISTINCT dkkh.id) as so_hoc_vien
+        FROM khoa_hoc kh
+        LEFT JOIN users u ON kh.teacher_id = u.id
+        LEFT JOIN dang_ky_khoa_hoc dkkh ON kh.id = dkkh.khoa_hoc_id
+        GROUP BY kh.id
+        ORDER BY kh.created_at DESC
+    """)
+    courses = cur.fetchall()
+    cur.close()
+    return render_template('admin/courses.html', courses=courses)
+
+@app.route('/admin/courses/create', methods=['GET', 'POST'])
+@admin_required
+def admin_create_course():
+    """Tạo khóa học mới"""
+    if request.method == 'POST':
+        tieu_de = request.form.get('tieu_de')
+        mo_ta = request.form.get('mo_ta', '')
+        cap_do = request.form.get('cap_do', 'Beginner')
+        gia = float(request.form.get('gia', 0))
+        so_buoi = int(request.form.get('so_buoi', 0))
+        thoi_luong = request.form.get('thoi_luong', '')
+        hinh_thuc = request.form.get('hinh_thuc', 'online')
+        teacher_id = int(request.form.get('teacher_id', 0)) or None
+        
+        cur = mysql.connection.cursor()
+        cur.execute("""
+            INSERT INTO khoa_hoc (tieu_de, mo_ta, cap_do, gia, so_buoi, thoi_luong, hinh_thuc, teacher_id)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """, (tieu_de, mo_ta, cap_do, gia, so_buoi, thoi_luong, hinh_thuc, teacher_id))
+        mysql.connection.commit()
+        cur.close()
+        
+        flash('Tạo khóa học thành công!', 'success')
+        return redirect(url_for('admin_courses'))
+    
+    cur = mysql.connection.cursor()
+    cur.execute("SELECT id, ho_ten FROM users WHERE role = 'teacher'")
+    teachers = cur.fetchall()
+    cur.close()
+    return render_template('admin/create_course.html', teachers=teachers)
+
+@app.route('/admin/courses/<int:course_id>/delete', methods=['POST'])
+@admin_required
+def admin_delete_course(course_id):
+    """Xóa khóa học"""
+    cur = mysql.connection.cursor()
+    cur.execute("DELETE FROM khoa_hoc WHERE id = %s", (course_id,))
+    mysql.connection.commit()
+    cur.close()
+    flash('Đã xóa khóa học', 'success')
+    return redirect(url_for('admin_courses'))
+
+@app.route('/admin/payments')
+@admin_required
+def admin_payments():
+    """Quản lý thanh toán"""
+    cur = mysql.connection.cursor()
+    ensure_extended_tables(cur)
+    
+    cur.execute("""
+        SELECT p.*, u.ho_ten, u.email, kh.tieu_de as course_name
+        FROM payments p
+        JOIN users u ON p.user_id = u.id
+        JOIN khoa_hoc kh ON p.khoa_hoc_id = kh.id
+        ORDER BY p.created_at DESC
+        LIMIT 100
+    """)
+    payments = cur.fetchall()
+    
+    # Thống kê
+    cur.execute("""
+        SELECT 
+            COUNT(*) as total_count,
+            COALESCE(SUM(amount), 0) as total_amount,
+            COUNT(CASE WHEN DATE(created_at) = CURDATE() THEN 1 END) as today_count,
+            COALESCE(SUM(CASE WHEN DATE(created_at) = CURDATE() THEN amount ELSE 0 END), 0) as today_amount
+        FROM payments
+        WHERE status = 'paid'
+    """)
+    stats = cur.fetchone()
+    cur.close()
+    
+    return render_template('admin/payments.html', payments=payments, stats=stats)
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

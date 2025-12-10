@@ -151,13 +151,28 @@
                 </div>
                 <hr>
                 {% if session.user_id %}
-                    <button class="btn btn-primary-custom w-100 mb-2" onclick="buyCourse({{ course.id }})">
-                        <i class="bi bi-cart-plus"></i> Mua/Đăng ký ngay
-                    </button>
+                    {% if is_enrolled %}
+                        <div class="alert alert-success mb-2">
+                            <i class="bi bi-check-circle"></i> Bạn đã đăng ký khóa học này
+                        </div>
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-custom w-100">
+                            <i class="bi bi-book"></i> Vào học ngay
+                        </a>
+                    {% else %}
+                        <button class="btn btn-primary-custom w-100 mb-2" onclick="buyCourse({{ course.id }})">
+                            <i class="bi bi-cart-plus"></i> Mua khóa học ({{ "{:,.0f}".format(course.gia) }} VNĐ)
+                        </button>
+                        <small class="text-muted d-block text-center mt-2">
+                            <i class="bi bi-info-circle"></i> Thanh toán tự động sau khi xác nhận
+                        </small>
+                    {% endif %}
                 {% else %}
                     <a href="{{ url_for('login') }}" class="btn btn-primary-custom w-100 mb-2">
-                        <i class="bi bi-box-arrow-in-right"></i> Đăng nhập để đăng ký
+                        <i class="bi bi-box-arrow-in-right"></i> Đăng nhập để mua khóa học
                     </a>
+                    <small class="text-muted d-block text-center mt-2">
+                        Khách vãng lai không thể đăng ký khóa học
+                    </small>
                 {% endif %}
             </div>
         </div>
@@ -166,6 +181,9 @@
 
 <script>
 function buyCourse(courseId) {
+    if (!confirm('Bạn có chắc muốn mua khóa học này? Hệ thống sẽ tự động thanh toán.')) {
+        return;
+    }
     fetch(`/course/${courseId}/buy`, {
         method: 'POST',
         headers: {
@@ -175,7 +193,7 @@ function buyCourse(courseId) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert('Đăng ký thành công!');
+            alert(data.message || 'Thanh toán thành công!');
             window.location.href = '/dashboard';
         } else {
             alert(data.message || 'Có lỗi xảy ra');
@@ -183,7 +201,7 @@ function buyCourse(courseId) {
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Có lỗi xảy ra khi đăng ký');
+        alert('Có lỗi xảy ra khi thanh toán');
     });
 }
 </script>
