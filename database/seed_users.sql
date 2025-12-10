@@ -5,7 +5,7 @@
 INSERT INTO users (email, password_hash, ho_ten, role, so_dien_thoai, is_active)
 VALUES (
     'admin@example.com',
-    '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYqJqZ5Z5Z5u', -- password: admin123
+    '$2b$12$KPOLHSq0g2Y3onuFWkCnpON/7Irx05K3iO3cwB3obwhtcGewbdleS', -- password: admin123
     'Admin User',
     'admin',
     '0900000001',
