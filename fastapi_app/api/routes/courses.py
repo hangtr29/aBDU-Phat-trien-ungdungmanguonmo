@@ -13,6 +13,14 @@ def list_courses(db: Session = Depends(get_db)):
     return db.query(Course).all()
 
 
+@router.get("/courses/{course_id}", response_model=CourseOut)
+def get_course(course_id: int, db: Session = Depends(get_db)):
+    course = db.query(Course).filter(Course.id == course_id).first()
+    if not course:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Khóa học không tồn tại")
+    return course
+
+
 @router.post("/courses", response_model=CourseOut, status_code=status.HTTP_201_CREATED)
 def create_course(payload: CourseCreate, db: Session = Depends(get_db)):
     course = Course(

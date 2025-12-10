@@ -20,6 +20,13 @@ Hệ thống quản lý học trực tuyến với đầy đủ chức năng cho
 - **Authentication**: JWT (JSON Web Tokens)
 - **API Documentation**: Swagger UI tại `/docs`
 
+### Frontend (React - Mới)
+- **Framework**: React 18 + Vite
+- **Routing**: React Router DOM
+- **HTTP Client**: Axios
+- **State Management**: Context API
+- **UI**: Custom CSS (responsive)
+
 ## 📦 Cài đặt
 
 ### 1. Clone repository
@@ -109,9 +116,21 @@ pip install -r fastapi_app/requirements.txt
 pip install email-validator bcrypt==3.2.2
 ```
 
-5. **Chạy server**:
+5. **Chạy server** (QUAN TRỌNG: từ thư mục root):
 ```bash
-uvicorn fastapi_app.main:app --env-file fastapi_app/.env --port 8001
+# Đảm bảo đã activate venv
+.\venv\Scripts\Activate.ps1  # Windows PowerShell
+# hoặc
+venv\Scripts\activate.bat     # Windows CMD
+
+# Chạy từ thư mục root (không phải từ trong fastapi_app)
+uvicorn fastapi_app.main:app --reload --port 8001
+```
+
+Hoặc dùng script:
+```bash
+.\fastapi_app\run.ps1  # PowerShell
+.\fastapi_app\run.bat  # CMD
 ```
 
 6. **Truy cập**:
@@ -125,6 +144,23 @@ psql -U elearn -d elearning -f database/seed_courses.sql
 ```
 
 **Kiểm tra dữ liệu**: Mở Swagger tại `/docs` và gọi `GET /api/courses`
+
+### 8. Chạy Frontend React (Mới)
+
+1. **Cài đặt dependencies**:
+```bash
+cd frontend
+npm install
+```
+
+2. **Chạy development server**:
+```bash
+npm run dev
+```
+
+Frontend sẽ chạy tại: `http://localhost:3000`
+
+**Lưu ý**: Cần chạy cả Backend FastAPI (port 8001) và Frontend React (port 3000) cùng lúc.
 
 ## 👥 Tài khoản mặc định
 
@@ -141,8 +177,23 @@ psql -U elearn -d elearning -f database/seed_courses.sql
 
 ### Courses
 - `GET /api/courses` - Lấy danh sách khóa học
+- `GET /api/courses/{course_id}` - Lấy chi tiết khóa học
 - `POST /api/courses` - Tạo khóa học mới
-- `GET /api/courses/{course_id}/lessons` - Lấy danh sách bài học của khóa học
+- `GET /api/courses/{course_id}/lessons` - Lấy danh sách bài học
+- `POST /api/courses/{course_id}/lessons` - Tạo bài học mới (với file upload)
+
+### Progress Tracking
+- `POST /api/courses/{course_id}/progress` - Cập nhật tiến độ học tập
+- `GET /api/courses/{course_id}/progress` - Lấy tiến độ học tập
+- `GET /api/users/me/progress` - Lấy tất cả progress của user
+
+### Certificates
+- `GET /api/courses/{course_id}/certificate` - Lấy chứng nhận hoàn thành
+- `POST /api/courses/{course_id}/complete` - Đánh dấu hoàn thành khóa học
+
+### Discussions
+- `GET /api/courses/{course_id}/discussions` - Lấy danh sách thảo luận
+- `POST /api/courses/{course_id}/discussions` - Tạo thảo luận mới
 
 ### Health Check
 - `GET /health` - Kiểm tra trạng thái server
@@ -174,6 +225,16 @@ Webhoctructuyen/
 │   ├── schemas/         # Pydantic schemas
 │   └── api/
 │       └── routes/      # API routes
+├── frontend/            # React Frontend (mới)
+│   ├── package.json     # Dependencies
+│   ├── vite.config.js   # Vite config
+│   ├── index.html       # HTML entry
+│   └── src/
+│       ├── main.jsx     # React entry
+│       ├── App.jsx      # Root component
+│       ├── pages/       # Page components
+│       ├── components/  # Reusable components
+│       └── context/     # Context API (Auth)
 ├── templates/            # Jinja2 templates (Flask)
 │   ├── index.html
 │   ├── courses.html
@@ -190,7 +251,26 @@ Webhoctructuyen/
 └── uploads/             # Uploaded files
 ```
 
-## 🚀 Chức năng nâng cao
+## ✅ Tính năng đã hoàn thành
+
+### Backend (FastAPI)
+- ✅ Authentication với JWT (Register/Login)
+- ✅ CRUD Courses và Lessons
+- ✅ File Upload cho video bài học
+- ✅ Progress Tracking API
+- ✅ Certificates API
+- ✅ Discussion Forum API
+- ✅ Swagger UI documentation
+
+### Frontend (React)
+- ✅ Login/Register với JWT
+- ✅ Danh sách khóa học
+- ✅ Chi tiết khóa học với Lesson Tree
+- ✅ Video Player (YouTube, Vimeo, HTML5)
+- ✅ Drip Content (locked/unlocked lessons)
+- ✅ Responsive design
+
+## 🚀 Chức năng nâng cao (Đang phát triển)
 
 ### 1. Hệ thống đánh giá và phản hồi (0.5 điểm)
 - Học viên có thể đánh giá khóa học (1-5 sao)
