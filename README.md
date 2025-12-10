@@ -265,14 +265,23 @@ BDU-Phat-trien-ungdungmanguonmo/
 
 **Xem đầy đủ API tại:** `http://127.0.0.1:8001/docs`
 
-## 👥 Tài khoản mẫu
+## 👥 Tài khoản test
 
-### Giáo viên
+Sau khi seed data, có các tài khoản sau:
+
+### Admin
+- Email: `admin@example.com`
+- Password: `admin123`
+
+### Teacher
 - Email: `teacher1@example.com` hoặc `teacher2@example.com`
 - Password: `teacher123`
 
-### Học viên
-- Tạo tài khoản mới qua trang đăng ký
+### Student
+- Email: `student@example.com`, `student1@example.com`, `student2@example.com`
+- Password: `student123`
+
+**Lưu ý:** Chạy `database/seed_users.sql` để tạo admin và student accounts (teacher đã có trong seed courses).
 
 ## 🧪 Test ứng dụng
 
