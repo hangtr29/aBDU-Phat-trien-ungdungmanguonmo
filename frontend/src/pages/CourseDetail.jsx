@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import axios from 'axios'
 import { useAuth } from '../context/AuthContext'
 import ReviewSection from '../components/ReviewSection'
+import PaymentModal from '../components/PaymentModal'
 
 export default function CourseDetail() {
   const { id } = useParams()
