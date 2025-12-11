@@ -154,6 +154,63 @@ def get_my_payments(
     return payments
 
 
+@router.post("/demo-complete", response_model=PaymentOut)
+def demo_complete_payment(
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Endpoint demo: Tự động hoàn thành thanh toán (chỉ dùng cho demo/testing)"""
+    ma_don_hang = payload.get("ma_don_hang")
+    if not ma_don_hang:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Thiếu mã đơn hàng"
+        )
+
+    # Tìm payment
+    payment = db.query(Payment).filter(
+        Payment.ma_don_hang == ma_don_hang,
+        Payment.user_id == current_user.id
+    ).first()
+
+    if not payment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Không tìm thấy đơn hàng"
+        )
+
+    if payment.trang_thai == PaymentStatus.completed:
+        # Đã thanh toán rồi, trả về luôn
+        return payment
+
+    # Giả lập thanh toán thành công
+    payment.trang_thai = PaymentStatus.completed
+    payment.ma_giao_dich = f"DEMO_{ma_don_hang}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+    payment.ngay_thanh_toan = datetime.utcnow()
+
+    # Tự động đăng ký khóa học
+    enrollment = db.query(Enrollment).filter(
+        Enrollment.user_id == payment.user_id,
+        Enrollment.khoa_hoc_id == payment.khoa_hoc_id
+    ).first()
+
+    if not enrollment:
+        enrollment = Enrollment(
+            user_id=payment.user_id,
+            khoa_hoc_id=payment.khoa_hoc_id,
+            trang_thai='active'
+        )
+        db.add(enrollment)
+    else:
+        enrollment.trang_thai = 'active'
+
+    db.commit()
+    db.refresh(payment)
+
+    return payment
+
+
 @router.get("/{payment_id}", response_model=PaymentOut)
 def get_payment(
     payment_id: int,

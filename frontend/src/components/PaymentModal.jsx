@@ -17,7 +17,9 @@ export default function PaymentModal({ course, onClose, onSuccess }) {
 
     try {
       const token = localStorage.getItem('token')
-      const response = await axios.post(
+      
+      // Tạo payment record
+      const createResponse = await axios.post(
         '/api/payments/create',
         {
           khoa_hoc_id: course.id,
@@ -31,18 +33,26 @@ export default function PaymentModal({ course, onClose, onSuccess }) {
         }
       )
 
-      // TODO: Redirect đến cổng thanh toán thật (Momo/ZaloPay/PayPal)
-      // Hiện tại chỉ giả lập
-      alert(`Đã tạo đơn hàng: ${response.data.ma_don_hang}\n\nTrong môi trường thật, bạn sẽ được chuyển đến cổng thanh toán ${paymentMethod.toUpperCase()}.`)
-      
-      // Giả lập thanh toán thành công (trong thực tế sẽ nhận callback từ cổng thanh toán)
-      // Tạm thời tự động đăng ký khóa học
+      // Giả lập thanh toán thành công ngay lập tức (demo mode)
+      await axios.post(
+        '/api/payments/demo-complete',
+        {
+          ma_don_hang: createResponse.data.ma_don_hang
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      )
+
+      // Gọi callback thành công
       if (onSuccess) {
         onSuccess()
       }
       onClose()
     } catch (err) {
-      setError(err.response?.data?.detail || 'Tạo đơn hàng thất bại')
+      setError(err.response?.data?.detail || 'Thanh toán thất bại')
     } finally {
       setLoading(false)
     }
@@ -68,69 +78,18 @@ export default function PaymentModal({ course, onClose, onSuccess }) {
                 </div>
 
                 <div className="mb-3">
-                  <label className="form-label fw-bold">Chọn phương thức thanh toán:</label>
-                  <div className="d-flex flex-column gap-2">
-                    <div className="form-check">
-                      <input
-                        className="form-check-input"
-                        type="radio"
-                        name="paymentMethod"
-                        id="momo"
-                        value="momo"
-                        checked={paymentMethod === 'momo'}
-                        onChange={(e) => setPaymentMethod(e.target.value)}
-                      />
-                      <label className="form-check-label" htmlFor="momo">
-                        <i className="bi bi-phone me-2"></i>
-                        Ví MoMo
-                      </label>
-                    </div>
-                    <div className="form-check">
-                      <input
-                        className="form-check-input"
-                        type="radio"
-                        name="paymentMethod"
-                        id="zalopay"
-                        value="zalopay"
-                        checked={paymentMethod === 'zalopay'}
-                        onChange={(e) => setPaymentMethod(e.target.value)}
-                      />
-                      <label className="form-check-label" htmlFor="zalopay">
-                        <i className="bi bi-wallet2 me-2"></i>
-                        ZaloPay
-                      </label>
-                    </div>
-                    <div className="form-check">
-                      <input
-                        className="form-check-input"
-                        type="radio"
-                        name="paymentMethod"
-                        id="paypal"
-                        value="paypal"
-                        checked={paymentMethod === 'paypal'}
-                        onChange={(e) => setPaymentMethod(e.target.value)}
-                      />
-                      <label className="form-check-label" htmlFor="paypal">
-                        <i className="bi bi-paypal me-2"></i>
-                        PayPal
-                      </label>
-                    </div>
-                    <div className="form-check">
-                      <input
-                        className="form-check-input"
-                        type="radio"
-                        name="paymentMethod"
-                        id="bank"
-                        value="bank_transfer"
-                        checked={paymentMethod === 'bank_transfer'}
-                        onChange={(e) => setPaymentMethod(e.target.value)}
-                      />
-                      <label className="form-check-label" htmlFor="bank">
-                        <i className="bi bi-bank me-2"></i>
-                        Chuyển khoản ngân hàng
-                      </label>
-                    </div>
-                  </div>
+                  <label className="form-label fw-bold">Phương thức thanh toán:</label>
+                  <select
+                    className="form-select"
+                    value={paymentMethod}
+                    onChange={(e) => setPaymentMethod(e.target.value)}
+                    disabled={loading}
+                  >
+                    <option value="momo">Ví MoMo</option>
+                    <option value="zalopay">ZaloPay</option>
+                    <option value="paypal">PayPal</option>
+                    <option value="bank_transfer">Chuyển khoản ngân hàng</option>
+                  </select>
                 </div>
 
                 {error && (
@@ -140,11 +99,11 @@ export default function PaymentModal({ course, onClose, onSuccess }) {
                   </div>
                 )}
 
-                <div className="alert alert-info">
+                <div className="alert alert-warning">
                   <i className="bi bi-info-circle me-2"></i>
                   <small>
-                    <strong>Lưu ý:</strong> Hiện tại đang ở chế độ demo. 
-                    Trong môi trường thật, bạn sẽ được chuyển đến cổng thanh toán để hoàn tất giao dịch.
+                    <strong>Chế độ demo:</strong> Thanh toán sẽ được xử lý tự động để demo. 
+                    Trong môi trường thật, bạn sẽ được chuyển đến cổng thanh toán thực tế.
                   </small>
                 </div>
               </>

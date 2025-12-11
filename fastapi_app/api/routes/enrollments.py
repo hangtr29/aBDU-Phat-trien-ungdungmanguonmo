@@ -57,8 +57,21 @@ def enroll_course(
                 detail="Bạn đã hoàn thành khóa học này rồi"
             )
     
-    # Kiểm tra giá khóa học (nếu có giá > 0 thì cần thanh toán, nhưng MVP có thể bỏ qua)
-    # Trong MVP, cho phép đăng ký miễn phí hoặc có giá
+    # Kiểm tra giá khóa học - nếu có giá > 0 thì phải thanh toán trước
+    if course.gia and float(course.gia) > 0:
+        # Kiểm tra xem đã thanh toán chưa
+        from ...models.payment import Payment, PaymentStatus
+        payment = db.query(Payment).filter(
+            Payment.user_id == current_user.id,
+            Payment.khoa_hoc_id == course_id,
+            Payment.trang_thai == PaymentStatus.completed
+        ).first()
+        
+        if not payment:
+            raise HTTPException(
+                status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                detail=f"Khóa học này có phí {float(course.gia):,.0f} VNĐ. Vui lòng thanh toán trước khi đăng ký."
+            )
     
     # Tạo enrollment mới
     enrollment = Enrollment(

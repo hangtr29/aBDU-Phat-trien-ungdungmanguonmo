@@ -15,6 +15,7 @@ export default function CourseDetail() {
   const [isEnrolled, setIsEnrolled] = useState(false)
   const [enrolling, setEnrolling] = useState(false)
   const [enrollError, setEnrollError] = useState('')
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
 
   useEffect(() => {
     fetchCourse()
@@ -64,6 +65,13 @@ export default function CourseDetail() {
       return
     }
 
+    // Nếu khóa học có phí, mở modal thanh toán
+    if (course && course.gia && parseFloat(course.gia) > 0) {
+      setShowPaymentModal(true)
+      return
+    }
+
+    // Khóa học miễn phí, đăng ký trực tiếp
     setEnrolling(true)
     setEnrollError('')
     
@@ -78,6 +86,44 @@ export default function CourseDetail() {
       setEnrollError(message)
       setTimeout(() => setEnrollError(''), 5000)
       console.error('Failed to enroll:', error)
+    } finally {
+      setEnrolling(false)
+    }
+  }
+
+  const handlePaymentSuccess = async () => {
+    // Sau khi thanh toán thành công, callback từ cổng thanh toán đã tự động tạo enrollment
+    // Chỉ cần check lại enrollment status và redirect
+    setShowPaymentModal(false)
+    setEnrolling(true)
+    
+    try {
+      // Đợi một chút để backend xử lý callback
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      // Check enrollment status
+      const response = await axios.get(`/api/courses/${id}/enrollment`)
+      if (response.data.is_enrolled) {
+        setIsEnrolled(true)
+        alert('Thanh toán thành công! Đang chuyển đến trang học...')
+        window.location.href = `/learn/${id}`
+      } else {
+        // Nếu chưa enroll (có thể callback chưa xử lý xong), thử enroll
+        await axios.post(`/api/courses/${id}/enroll`)
+        setIsEnrolled(true)
+        alert('Đăng ký khóa học thành công! Đang chuyển đến trang học...')
+        window.location.href = `/learn/${id}`
+      }
+    } catch (error) {
+      // Nếu đã enroll rồi (từ callback), chỉ cần redirect
+      if (error.response?.status === 400 && error.response?.data?.detail?.includes('đã đăng ký')) {
+        setIsEnrolled(true)
+        window.location.href = `/learn/${id}`
+      } else {
+        const message = error.response?.data?.detail || 'Có lỗi xảy ra. Vui lòng thử lại.'
+        setEnrollError(message)
+        setTimeout(() => setEnrollError(''), 5000)
+      }
     } finally {
       setEnrolling(false)
     }
@@ -309,6 +355,15 @@ export default function CourseDetail() {
           </div>
         </div>
       </div>
+
+      {/* Payment Modal */}
+      {showPaymentModal && course && (
+        <PaymentModal
+          course={course}
+          onClose={() => setShowPaymentModal(false)}
+          onSuccess={handlePaymentSuccess}
+        />
+      )}
     </div>
   )
 }
