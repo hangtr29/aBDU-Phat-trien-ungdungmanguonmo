@@ -9,7 +9,7 @@ from ...models.assignment import Assignment, Submission
 from ...models.course import Course
 from ...schemas.assignment import AssignmentCreate, AssignmentOut, SubmissionCreate, SubmissionOut
 from ...api.deps import get_current_active_user
-from ...models.user import User
+from ...models.user import User, UserRole
 
 router = APIRouter()
 
@@ -34,13 +34,33 @@ def _ensure_assignment(db: Session, assignment_id: int) -> Assignment:
 
 @router.get("/courses/{course_id}/assignments", response_model=list[AssignmentOut])
 def list_assignments(course_id: int, db: Session = Depends(get_db)):
-    _ensure_course(db, course_id)
-    return (
-        db.query(Assignment)
-        .filter(Assignment.khoa_hoc_id == course_id)
-        .order_by(Assignment.han_nop.nulls_last())
-        .all()
-    )
+    try:
+        _ensure_course(db, course_id)
+        assignments = (
+            db.query(Assignment)
+            .filter(Assignment.khoa_hoc_id == course_id)
+            .order_by(Assignment.han_nop.nulls_last())
+            .all()
+        )
+        # Convert Decimal to float để serialize đúng
+        result = []
+        for a in assignments:
+            result.append(AssignmentOut(
+                id=a.id,
+                khoa_hoc_id=a.khoa_hoc_id,
+                tieu_de=a.tieu_de,
+                noi_dung=a.noi_dung,
+                han_nop=a.han_nop,
+                is_required=a.is_required,
+                diem_toi_da=float(a.diem_toi_da) if a.diem_toi_da else 10.0,
+                created_at=a.created_at
+            ))
+        return result
+    except Exception as e:
+        import traceback
+        print(f"Error in list_assignments: {e}")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Lỗi khi lấy danh sách bài tập: {str(e)}")
 
 
 @router.post("/courses/{course_id}/assignments", response_model=AssignmentOut, status_code=status.HTTP_201_CREATED)
@@ -50,25 +70,66 @@ def create_assignment(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    # Kiểm tra quyền giáo viên hoặc admin
-    if current_user.vai_tro not in ['teacher', 'admin']:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Chỉ giáo viên mới có thể tạo bài tập")
-    
-    _ensure_course(db, course_id)
-    
-    assignment = Assignment(
-        khoa_hoc_id=course_id,
-        tieu_de=payload.tieu_de,
-        noi_dung=payload.noi_dung,
-        han_nop=payload.han_nop,
-        is_required=payload.is_required,
-        diem_toi_da=payload.diem_toi_da
-    )
-    
-    db.add(assignment)
-    db.commit()
-    db.refresh(assignment)
-    return assignment
+    try:
+        # Kiểm tra quyền giáo viên hoặc admin
+        if current_user.role not in [UserRole.teacher, UserRole.admin]:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Chỉ giáo viên mới có thể tạo bài tập")
+        
+        _ensure_course(db, course_id)
+        
+        assignment = Assignment(
+            khoa_hoc_id=course_id,
+            tieu_de=payload.tieu_de,
+            noi_dung=payload.noi_dung,
+            han_nop=payload.han_nop,
+            is_required=payload.is_required,
+            diem_toi_da=payload.diem_toi_da
+        )
+        
+        db.add(assignment)
+        db.commit()
+        db.refresh(assignment)
+        
+        # Tạo thông báo cho tất cả học viên đã đăng ký khóa học
+        try:
+            from ...models.enrollment import Enrollment
+            enrollments = db.query(Enrollment).filter(
+                Enrollment.khoa_hoc_id == course_id,
+                Enrollment.trang_thai == 'active'
+            ).all()
+            
+            from ...models.notification import Notification
+            for enrollment in enrollments:
+                notification = Notification(
+                    user_id=enrollment.user_id,
+                    loai="assignment",
+                    tieu_de=f"Bài tập mới: {payload.tieu_de}",
+                    noi_dung=f"Giáo viên đã tạo bài tập mới cho khóa học",
+                    link=f"/learn/{course_id}?tab=assignments"
+                )
+                db.add(notification)
+            db.commit()
+        except Exception as e:
+            # Không làm gián đoạn flow nếu notification fail
+            print(f"Failed to create notifications: {e}")
+        
+        return assignment
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        db.rollback()
+        print(f"Error in create_assignment: {e}")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Lỗi khi tạo bài tập: {str(e)}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        db.rollback()
+        print(f"Error in create_assignment: {e}")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Lỗi khi tạo bài tập: {str(e)}")
 
 
 @router.post("/assignments/{assignment_id}/submit", response_model=SubmissionOut, status_code=status.HTTP_201_CREATED)
@@ -150,7 +211,7 @@ def list_submissions(
     from ...models.user import User as UserModel
     
     # Chỉ giáo viên hoặc admin mới xem được tất cả submissions
-    if current_user.vai_tro in ['teacher', 'admin']:
+    if current_user.role in [UserRole.teacher, UserRole.admin]:
         submissions = db.query(Submission).filter(Submission.bai_tap_id == assignment_id).all()
     else:
         # Học viên chỉ xem được submission của mình
@@ -184,7 +245,7 @@ def grade_submission(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    if current_user.vai_tro not in ['teacher', 'admin']:
+    if current_user.role not in [UserRole.teacher, UserRole.admin]:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Chỉ giáo viên mới có thể chấm bài")
     
     submission = db.query(Submission).filter(Submission.id == submission_id).first()

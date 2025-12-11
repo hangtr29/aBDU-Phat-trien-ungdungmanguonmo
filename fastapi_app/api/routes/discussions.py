@@ -86,7 +86,7 @@ def delete_discussion(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Thảo luận không tồn tại")
 
     # Chủ sở hữu hoặc admin/teacher được xóa
-    if discussion.user_id != current_user.id and current_user.vai_tro not in ["teacher", "admin"]:
+    if discussion.user_id != current_user.id and current_user.role not in [UserRole.teacher, UserRole.admin]:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Bạn không có quyền xóa nội dung này")
 
     db.delete(discussion)

@@ -1,5 +1,5 @@
-from pydantic import BaseModel
-from typing import Optional
+from pydantic import BaseModel, field_validator, model_validator, field_serializer
+from typing import Optional, Union
 from datetime import datetime
 from decimal import Decimal
 
@@ -11,15 +11,64 @@ class AssignmentBase(BaseModel):
     is_required: bool = False
     diem_toi_da: Optional[Decimal] = 10.0
 
+    @field_validator('han_nop', mode='before')
+    @classmethod
+    def parse_datetime(cls, v):
+        if v is None or v == '':
+            return None
+        if isinstance(v, str):
+            try:
+                # Parse ISO format: YYYY-MM-DDTHH:mm:ss hoặc YYYY-MM-DD
+                if 'T' in v:
+                    return datetime.fromisoformat(v.replace('Z', '+00:00'))
+                else:
+                    # Nếu chỉ có date, thêm time 23:59:00
+                    return datetime.fromisoformat(f"{v}T23:59:00")
+            except Exception as e:
+                # Nếu không parse được, trả về None
+                return None
+        return v
+
+    @field_validator('diem_toi_da', mode='before')
+    @classmethod
+    def parse_decimal(cls, v):
+        if v is None:
+            return Decimal('10.0')
+        if isinstance(v, (int, float, str)):
+            try:
+                return Decimal(str(v))
+            except:
+                return Decimal('10.0')
+        return v
+
 
 class AssignmentCreate(AssignmentBase):
-    khoa_hoc_id: int
+    # khoa_hoc_id được lấy từ path parameter, không cần trong body
+    pass
 
 
 class AssignmentOut(AssignmentBase):
     id: int
     khoa_hoc_id: int
     created_at: Optional[datetime] = None
+    diem_toi_da: Optional[Union[Decimal, float]] = 10.0
+
+    @field_serializer('diem_toi_da')
+    def serialize_diem_toi_da(self, value: Optional[Union[Decimal, float]]) -> Optional[float]:
+        if value is None:
+            return 10.0
+        if isinstance(value, Decimal):
+            return float(value)
+        return float(value) if value else 10.0
+
+    @field_validator('diem_toi_da', mode='before')
+    @classmethod
+    def parse_diem_toi_da(cls, v):
+        if v is None:
+            return 10.0
+        if isinstance(v, Decimal):
+            return float(v)
+        return v
 
     class Config:
         from_attributes = True

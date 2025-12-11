@@ -4,6 +4,7 @@ import axios from 'axios'
 import { useAuth } from '../context/AuthContext'
 import QuizSection from '../components/QuizSection'
 import QuizCreator from '../components/QuizCreator'
+import CodingPlayground from '../components/CodingPlayground'
 import LessonResourcesEditor from '../components/LessonResourcesEditor'
 import VideoPlayer from '../components/VideoPlayer'
 
@@ -119,7 +120,7 @@ function DiscussionSection({ courseId, teacher }) {
 }
 
 // Assignments Section Component
-function AssignmentsSection({ courseId }) {
+function AssignmentsSection({ courseId, isTeacher }) {
   const { user } = useAuth()
   const [assignments, setAssignments] = useState([])
   const [submissions, setSubmissions] = useState({})
@@ -127,6 +128,15 @@ function AssignmentsSection({ courseId }) {
   const [selectedAssignment, setSelectedAssignment] = useState(null)
   const [submissionText, setSubmissionText] = useState('')
   const [submissionFile, setSubmissionFile] = useState(null)
+  const [showCreateForm, setShowCreateForm] = useState(false)
+  const [creating, setCreating] = useState(false)
+  const [assignmentForm, setAssignmentForm] = useState({
+    tieu_de: '',
+    noi_dung: '',
+    han_nop: '',
+    is_required: false,
+    diem_toi_da: 10
+  })
 
   useEffect(() => {
     fetchAssignments()
@@ -182,6 +192,66 @@ function AssignmentsSection({ courseId }) {
     }
   }
 
+  const handleCreateAssignment = async (e) => {
+    e.preventDefault()
+    setCreating(true)
+    try {
+      // Format datetime đúng cho backend
+      let hanNopValue = null
+      if (assignmentForm.han_nop) {
+        // Nếu đã có format datetime, giữ nguyên; nếu chỉ có date, thêm time
+        if (assignmentForm.han_nop.includes('T')) {
+          hanNopValue = assignmentForm.han_nop
+        } else {
+          hanNopValue = `${assignmentForm.han_nop}T23:59:00`
+        }
+      }
+      
+      const payload = {
+        tieu_de: assignmentForm.tieu_de.trim(),
+        noi_dung: assignmentForm.noi_dung.trim(),
+        han_nop: hanNopValue,
+        is_required: assignmentForm.is_required || false,
+        diem_toi_da: parseFloat(assignmentForm.diem_toi_da) || 10
+      }
+      
+      await axios.post(`/api/courses/${courseId}/assignments`, payload)
+      alert('Tạo bài tập thành công! Tất cả học viên sẽ nhận được thông báo.')
+      setAssignmentForm({
+        tieu_de: '',
+        noi_dung: '',
+        han_nop: '',
+        is_required: false,
+        diem_toi_da: 10
+      })
+      setShowCreateForm(false)
+      fetchAssignments()
+    } catch (error) {
+      // Parse error message đúng cách
+      let errorMsg = 'Tạo bài tập thất bại'
+      if (error.response?.data) {
+        if (typeof error.response.data === 'string') {
+          errorMsg = error.response.data
+        } else if (error.response.data.detail) {
+          if (typeof error.response.data.detail === 'string') {
+            errorMsg = error.response.data.detail
+          } else if (Array.isArray(error.response.data.detail)) {
+            errorMsg = error.response.data.detail.map(e => e.msg || JSON.stringify(e)).join(', ')
+          } else {
+            errorMsg = JSON.stringify(error.response.data.detail)
+          }
+        } else {
+          errorMsg = JSON.stringify(error.response.data)
+        }
+      } else if (error.message) {
+        errorMsg = error.message
+      }
+      alert(`Tạo bài tập thất bại: ${errorMsg}`)
+    } finally {
+      setCreating(false)
+    }
+  }
+
   const formatDate = (dateString) => {
     if (!dateString) return 'Không có hạn'
     const date = new Date(dateString)
@@ -192,17 +262,150 @@ function AssignmentsSection({ courseId }) {
     return <div className="text-center py-4">Đang tải...</div>
   }
 
-  if (assignments.length === 0) {
-    return (
-      <div className="alert alert-info">
-        <i className="bi bi-info-circle"></i> Chưa có bài tập nào.
-      </div>
-    )
-  }
+  const isTeacherRole = isTeacher || user?.role === 'teacher' || user?.vai_tro === 'teacher'
 
   return (
     <div>
-      {assignments.map((assignment) => {
+      {/* Nút tạo bài tập cho giáo viên */}
+      {isTeacherRole && (
+        <div className="mb-4">
+          {!showCreateForm ? (
+            <button
+              className="btn btn-primary-custom"
+              onClick={() => setShowCreateForm(true)}
+            >
+              <i className="bi bi-plus-circle"></i> Tạo bài tập mới
+            </button>
+          ) : (
+            <div className="card-soft border-primary">
+              <div className="d-flex justify-content-between align-items-center mb-3">
+                <h5 className="mb-0">
+                  <i className="bi bi-file-earmark-plus"></i> Tạo bài tập mới
+                </h5>
+                <button
+                  className="btn btn-sm btn-outline-secondary"
+                  onClick={() => {
+                    setShowCreateForm(false)
+                    setAssignmentForm({
+                      tieu_de: '',
+                      noi_dung: '',
+                      han_nop: '',
+                      is_required: false,
+                      diem_toi_da: 10
+                    })
+                  }}
+                >
+                  <i className="bi bi-x"></i> Hủy
+                </button>
+              </div>
+              <form onSubmit={handleCreateAssignment}>
+                <div className="mb-3">
+                  <label className="form-label">Tiêu đề bài tập <span className="text-danger">*</span></label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={assignmentForm.tieu_de}
+                    onChange={(e) => setAssignmentForm({ ...assignmentForm, tieu_de: e.target.value })}
+                    required
+                    placeholder="Ví dụ: Bài tập số 1 - Làm quen với Python"
+                  />
+                </div>
+                <div className="mb-3">
+                  <label className="form-label">Nội dung bài tập <span className="text-danger">*</span></label>
+                  <textarea
+                    className="form-control"
+                    rows="5"
+                    value={assignmentForm.noi_dung}
+                    onChange={(e) => setAssignmentForm({ ...assignmentForm, noi_dung: e.target.value })}
+                    required
+                    placeholder="Mô tả chi tiết yêu cầu bài tập..."
+                  />
+                </div>
+                <div className="row">
+                  <div className="col-md-6 mb-3">
+                    <label className="form-label">
+                      Hạn nộp <small className="text-muted">(tùy chọn)</small>
+                    </label>
+                    <input
+                      type="date"
+                      className="form-control"
+                      value={assignmentForm.han_nop ? (assignmentForm.han_nop.includes('T') ? assignmentForm.han_nop.split('T')[0] : assignmentForm.han_nop) : ''}
+                      onChange={(e) => {
+                        const dateValue = e.target.value
+                        // Lưu chỉ date, sẽ format khi submit
+                        setAssignmentForm({ ...assignmentForm, han_nop: dateValue || '' })
+                      }}
+                    />
+                    <small className="text-muted">Chọn ngày hạn nộp (mặc định là 23:59)</small>
+                  </div>
+                  <div className="col-md-3 mb-3">
+                    <label className="form-label">Điểm tối đa</label>
+                    <input
+                      type="number"
+                      className="form-control"
+                      value={assignmentForm.diem_toi_da}
+                      onChange={(e) => setAssignmentForm({ ...assignmentForm, diem_toi_da: parseFloat(e.target.value) || 10 })}
+                      min="1"
+                      step="0.5"
+                    />
+                  </div>
+                  <div className="col-md-3 mb-3">
+                    <label className="form-label">Loại bài tập</label>
+                    <div className="form-check mt-2">
+                      <input
+                        className="form-check-input"
+                        type="checkbox"
+                        checked={assignmentForm.is_required}
+                        onChange={(e) => setAssignmentForm({ ...assignmentForm, is_required: e.target.checked })}
+                        id="isRequired"
+                      />
+                      <label className="form-check-label" htmlFor="isRequired">
+                        Bắt buộc
+                      </label>
+                    </div>
+                  </div>
+                </div>
+                <div className="alert alert-info">
+                  <i className="bi bi-info-circle"></i> Tất cả học viên đã đăng ký khóa học sẽ nhận được thông báo khi bạn tạo bài tập mới.
+                </div>
+                <button
+                  type="submit"
+                  className="btn btn-primary-custom"
+                  disabled={creating}
+                >
+                  {creating ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm me-2"></span>
+                      Đang tạo...
+                    </>
+                  ) : (
+                    <>
+                      <i className="bi bi-check-circle"></i> Tạo bài tập
+                    </>
+                  )}
+                </button>
+              </form>
+            </div>
+          )}
+        </div>
+      )}
+
+      {assignments.length === 0 && !showCreateForm ? (
+        <div className="alert alert-info">
+          <i className="bi bi-info-circle"></i> Chưa có bài tập nào.
+          {isTeacherRole && (
+            <div className="mt-2">
+              <button
+                className="btn btn-sm btn-primary-custom"
+                onClick={() => setShowCreateForm(true)}
+              >
+                <i className="bi bi-plus-circle"></i> Tạo bài tập đầu tiên
+              </button>
+            </div>
+          )}
+        </div>
+      ) : (
+        assignments.map((assignment) => {
         const submission = submissions[assignment.id]
         const isOverdue = assignment.han_nop && new Date(assignment.han_nop) < new Date()
         const isSubmitted = submission && submission.trang_thai !== 'cancelled'
@@ -283,7 +486,8 @@ function AssignmentsSection({ courseId }) {
             </div>
           </div>
         )
-      })}
+        })
+      )}
 
       {/* Submission Modal */}
       {selectedAssignment && (
@@ -377,6 +581,8 @@ export default function LearnPage() {
       setActiveSection('quiz')
     } else if (tab === 'discussion') {
       setActiveSection('discussion')
+    } else if (tab === 'playground') {
+      setActiveSection('playground')
     }
     
     fetchData()
@@ -604,6 +810,12 @@ export default function LearnPage() {
                 onClick={() => setActiveSection('discussion')}
               >
                 <i className="bi bi-chat-left-text"></i> Thảo luận
+              </button>
+              <button
+                className={`nav-link text-start ${activeSection === 'playground' ? 'active' : ''}`}
+                onClick={() => setActiveSection('playground')}
+              >
+                <i className="bi bi-code-square"></i> Coding Playground
               </button>
             </nav>
 
@@ -968,7 +1180,7 @@ export default function LearnPage() {
               <h3 className="title-gradient mb-4">
                 <i className="bi bi-file-earmark-check"></i> Bài tập
               </h3>
-              <AssignmentsSection courseId={courseId} />
+              <AssignmentsSection courseId={courseId} isTeacher={isTeacher} />
             </div>
           )}
 
@@ -992,6 +1204,13 @@ export default function LearnPage() {
               <div className="alert alert-info">
                 <i className="bi bi-info-circle"></i> Vui lòng chọn bài học để xem quiz.
               </div>
+            </div>
+          )}
+
+          {/* Section: Coding Playground */}
+          {activeSection === 'playground' && (
+            <div>
+              <CodingPlayground lessonId={selectedLesson?.id} courseId={courseId} />
             </div>
           )}
 
