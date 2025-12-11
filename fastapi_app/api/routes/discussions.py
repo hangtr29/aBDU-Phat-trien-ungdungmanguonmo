@@ -60,6 +60,18 @@ def create_discussion(
     db.add(discussion)
     db.commit()
     db.refresh(discussion)
+    
+    # Tạo thông báo cho giáo viên nếu học viên đặt câu hỏi
+    try:
+        from ...api.routes.notifications import create_notification_for_discussion
+        course = _ensure_course(db, course_id)
+        if course and course.teacher_id and current_user.id != course.teacher_id:
+            create_notification_for_discussion(
+                db, discussion.id, course_id, current_user.id, course.teacher_id
+            )
+    except Exception as e:
+        print(f"Failed to create notification: {e}")
+    
     return discussion
 
 

@@ -118,6 +118,22 @@ def submit_assignment(
 
     db.commit()
     db.refresh(submission)
+    
+    # Tạo thông báo cho giáo viên
+    try:
+        from ...api.routes.notifications import create_notification_for_submission
+        assignment_obj = _ensure_assignment(db, assignment_id)
+        if assignment_obj:
+            from ...models.course import Course
+            course = db.query(Course).filter(Course.id == assignment_obj.khoa_hoc_id).first()
+            if course and course.teacher_id:
+                create_notification_for_submission(
+                    db, submission.id, assignment_id, current_user.id, course.teacher_id
+                )
+    except Exception as e:
+        # Không làm gián đoạn flow nếu notification fail
+        print(f"Failed to create notification: {e}")
+    
     return submission
 
 
@@ -185,6 +201,16 @@ def grade_submission(
     
     db.commit()
     db.refresh(submission)
+    
+    # Tạo thông báo cho học viên
+    try:
+        from ...api.routes.notifications import create_notification_for_grade
+        create_notification_for_grade(
+            db, submission.id, assignment.id, submission.user_id, float(diem)
+        )
+    except Exception as e:
+        print(f"Failed to create notification: {e}")
+    
     return submission
 
 

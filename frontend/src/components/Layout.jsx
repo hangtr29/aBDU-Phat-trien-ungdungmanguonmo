@@ -1,5 +1,6 @@
 import { Outlet, Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import NotificationBell from './NotificationBell'
 
 export default function Layout() {
   const { user, logout } = useAuth()
@@ -59,6 +60,9 @@ export default function Layout() {
               <ul className="navbar-nav d-flex flex-row align-items-center gap-2">
                 {user ? (
                   <>
+                    <li className="nav-item">
+                      <NotificationBell />
+                    </li>
                     <li className="nav-item">
                       <Link className="nav-link text-brand-sky" to="/profile">
                         <i className="bi bi-person-circle"></i> {user.ho_ten}
