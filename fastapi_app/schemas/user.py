@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr
 from typing import Optional
+from decimal import Decimal
 from ..models.user import UserRole
 
 
@@ -17,6 +18,7 @@ class UserCreate(UserBase):
 class UserOut(UserBase):
     id: int
     is_active: bool = True
+    so_du: Optional[Decimal] = None
 
     class Config:
         from_attributes = True

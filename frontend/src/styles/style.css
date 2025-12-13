@@ -67,13 +67,17 @@ body {
 
 .navbar-nav .nav-link {
     color: #0891b2 !important;
-    font-weight: 500;
-    transition: color 0.3s ease;
-    padding: 0.5rem 0.75rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    position: relative;
 }
 
 .navbar-nav .nav-link:hover {
-    color: #1f2937 !important;
+    color: var(--brand-sky-600) !important;
+    background: rgba(6, 182, 212, 0.1);
+    transform: translateY(-1px);
 }
 
 .navbar-light .navbar-nav .nav-link {
@@ -268,40 +272,54 @@ body {
 
 /* Course Card */
 .course-card {
-    border-radius: 1rem;
+    border-radius: 1.25rem;
     overflow: hidden;
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: white;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.course-card:hover {
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    transform: translateY(-8px) scale(1.02);
+    border-color: rgba(6, 182, 212, 0.2);
+}
+
+.course-card-img {
+    height: 220px;
+    object-fit: cover;
+    width: 100%;
+    background: linear-gradient(135deg, #e0f2fe 0%, #d1fae5 100%);
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.course-card:hover .course-card-img {
+    transform: scale(1.05);
+}
+
+.course-card-body {
+    padding: 1.75rem;
+    flex-grow: 1;
     display: flex;
     flex-direction: column;
     background: white;
 }
 
-.course-card:hover {
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-    transform: translateY(-5px);
-}
-
-.course-card-img {
-    height: 200px;
-    object-fit: cover;
-    width: 100%;
-    background-color: #e5e7eb;
-}
-
-.course-card-body {
-    padding: 1.5rem;
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-}
-
 .course-card-title {
-    font-size: 1.25rem;
+    font-size: 1.3rem;
     font-weight: 700;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.75rem;
     color: #1f2937;
+    line-height: 1.4;
+    transition: color 0.3s ease;
+}
+
+.course-card:hover .course-card-title {
+    color: var(--brand-sky-600);
 }
 
 .course-card-text {
@@ -311,9 +329,12 @@ body {
 }
 
 .course-card-price {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--brand-sky-600);
+    font-size: 1.75rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--brand-sky-600), var(--brand-green-600));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
     margin-bottom: 1rem;
 }
 

@@ -17,6 +17,11 @@ export default function AdminDashboard() {
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState({})
+  
+  // Quản lý tiền
+  const [pendingDeposits, setPendingDeposits] = useState([])
+  const [revenueByCourse, setRevenueByCourse] = useState([])
+  const [totalRevenue, setTotalRevenue] = useState({ tong_doanh_thu: 0, tong_so_giao_dich: 0 })
 
   useEffect(() => {
     fetchData()
@@ -38,10 +43,58 @@ export default function AdminDashboard() {
         const pendingRes = await axios.get('/api/admin/courses/pending')
         setPendingCourses(pendingRes.data)
       }
+      
+      if (activeTab === 'wallet') {
+        await fetchWalletData()
+      }
     } catch (error) {
       console.error('Failed to fetch data:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchWalletData = async () => {
+    try {
+      const [depositsRes, revenueRes, totalRes] = await Promise.all([
+        axios.get('/api/admin/deposits/pending'),
+        axios.get('/api/admin/revenue/by-course'),
+        axios.get('/api/admin/revenue/total')
+      ])
+      setPendingDeposits(depositsRes.data)
+      setRevenueByCourse(revenueRes.data)
+      setTotalRevenue(totalRes.data)
+    } catch (error) {
+      console.error('Failed to fetch wallet data:', error)
+    }
+  }
+
+  const handleApproveDeposit = async (transactionId) => {
+    setActionLoading({ ...actionLoading, [`approve-${transactionId}`]: true })
+    try {
+      await axios.post(`/api/admin/deposits/${transactionId}/approve`)
+      await fetchWalletData()
+      alert('Đã duyệt giao dịch thành công!')
+    } catch (error) {
+      alert(error.response?.data?.detail || 'Có lỗi xảy ra')
+    } finally {
+      setActionLoading({ ...actionLoading, [`approve-${transactionId}`]: false })
+    }
+  }
+
+  const handleRejectDeposit = async (transactionId) => {
+    const ghiChu = prompt('Nhập lý do từ chối (tùy chọn):')
+    setActionLoading({ ...actionLoading, [`reject-${transactionId}`]: true })
+    try {
+      await axios.post(`/api/admin/deposits/${transactionId}/reject`, null, {
+        params: { ghi_chu: ghiChu || '' }
+      })
+      await fetchWalletData()
+      alert('Đã từ chối giao dịch')
+    } catch (error) {
+      alert(error.response?.data?.detail || 'Có lỗi xảy ra')
+    } finally {
+      setActionLoading({ ...actionLoading, [`reject-${transactionId}`]: false })
     }
   }
 
@@ -144,6 +197,17 @@ export default function AdminDashboard() {
             onClick={() => setActiveTab('users')}
           >
             <i className="bi bi-people"></i> Quản lý người dùng
+          </button>
+        </li>
+        <li className="nav-item">
+          <button
+            className={`nav-link ${activeTab === 'wallet' ? 'active' : ''}`}
+            onClick={() => setActiveTab('wallet')}
+          >
+            <i className="bi bi-wallet2"></i> Quản lý tiền
+            {pendingDeposits.length > 0 && (
+              <span className="badge bg-danger ms-2">{pendingDeposits.length}</span>
+            )}
           </button>
         </li>
       </ul>
@@ -401,6 +465,173 @@ export default function AdminDashboard() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Wallet Tab - Quản lý tiền */}
+      {activeTab === 'wallet' && (
+        <div>
+          {/* Tổng doanh thu */}
+          <div className="row mb-4">
+            <div className="col-md-6">
+              <div className="card bg-primary text-white">
+                <div className="card-body">
+                  <h5 className="card-title">Tổng doanh thu</h5>
+                  <h2 className="mb-0">
+                    {new Intl.NumberFormat('vi-VN').format(totalRevenue.tong_doanh_thu || 0)} VNĐ
+                  </h2>
+                  <small>Tổng số giao dịch: {totalRevenue.tong_so_giao_dich || 0}</small>
+                </div>
+              </div>
+            </div>
+            <div className="col-md-6">
+              <div className="card bg-warning text-dark">
+                <div className="card-body">
+                  <h5 className="card-title">Giao dịch chờ duyệt</h5>
+                  <h2 className="mb-0">{pendingDeposits.length}</h2>
+                  <small>Giao dịch nạp tiền đang chờ xử lý</small>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Giao dịch chờ duyệt */}
+          <div className="card mb-4">
+            <div className="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+              <h5 className="mb-0">
+                <i className="bi bi-clock-history me-2"></i>
+                Giao dịch nạp tiền chờ duyệt
+              </h5>
+              <button 
+                className="btn btn-sm btn-light"
+                onClick={fetchWalletData}
+              >
+                <i className="bi bi-arrow-clockwise me-1"></i>
+                Làm mới
+              </button>
+            </div>
+            <div className="card-body">
+              {pendingDeposits.length === 0 ? (
+                <p className="text-muted text-center py-4">Không có giao dịch nào chờ duyệt</p>
+              ) : (
+                <div className="table-responsive">
+                  <table className="table table-hover">
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>Người dùng</th>
+                        <th>Số tiền</th>
+                        <th>Nội dung CK</th>
+                        <th>Thời gian</th>
+                        <th>Thao tác</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pendingDeposits.map((deposit) => (
+                        <tr key={deposit.id}>
+                          <td>{deposit.id}</td>
+                          <td>
+                            <div>
+                              <strong>{deposit.user_name || deposit.user_email}</strong>
+                              <br />
+                              <small className="text-muted">{deposit.user_email}</small>
+                            </div>
+                          </td>
+                          <td>
+                            <strong className="text-success">
+                              {new Intl.NumberFormat('vi-VN').format(deposit.so_tien)} VNĐ
+                            </strong>
+                          </td>
+                          <td>
+                            <code>{deposit.noi_dung_chuyen_khoan}</code>
+                          </td>
+                          <td>
+                            {new Date(deposit.created_at).toLocaleString('vi-VN')}
+                          </td>
+                          <td>
+                            <div className="btn-group" role="group">
+                              <button
+                                className="btn btn-sm btn-success"
+                                onClick={() => handleApproveDeposit(deposit.id)}
+                                disabled={actionLoading[`approve-${deposit.id}`]}
+                              >
+                                {actionLoading[`approve-${deposit.id}`] ? (
+                                  <span className="spinner-border spinner-border-sm"></span>
+                                ) : (
+                                  <>
+                                    <i className="bi bi-check-circle me-1"></i>
+                                    Duyệt
+                                  </>
+                                )}
+                              </button>
+                              <button
+                                className="btn btn-sm btn-danger"
+                                onClick={() => handleRejectDeposit(deposit.id)}
+                                disabled={actionLoading[`reject-${deposit.id}`]}
+                              >
+                                {actionLoading[`reject-${deposit.id}`] ? (
+                                  <span className="spinner-border spinner-border-sm"></span>
+                                ) : (
+                                  <>
+                                    <i className="bi bi-x-circle me-1"></i>
+                                    Từ chối
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Doanh thu theo khóa học */}
+          <div className="card">
+            <div className="card-header bg-info text-white">
+              <h5 className="mb-0">
+                <i className="bi bi-graph-up me-2"></i>
+                Doanh thu theo khóa học
+              </h5>
+            </div>
+            <div className="card-body">
+              {revenueByCourse.length === 0 ? (
+                <p className="text-muted text-center py-4">Chưa có doanh thu</p>
+              ) : (
+                <div className="table-responsive">
+                  <table className="table table-hover">
+                    <thead>
+                      <tr>
+                        <th>Khóa học</th>
+                        <th>Số lượng giao dịch</th>
+                        <th>Tổng doanh thu</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {revenueByCourse.map((item) => (
+                        <tr key={item.khoa_hoc_id}>
+                          <td>
+                            <Link to={`/courses/${item.khoa_hoc_id}`}>
+                              {item.tieu_de}
+                            </Link>
+                          </td>
+                          <td>{item.so_luong_giao_dich}</td>
+                          <td>
+                            <strong className="text-success">
+                              {new Intl.NumberFormat('vi-VN').format(item.tong_doanh_thu)} VNĐ
+                            </strong>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

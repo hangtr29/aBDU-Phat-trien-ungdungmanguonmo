@@ -17,6 +17,27 @@ export default function Courses() {
     fetchCourses()
   }, [level, mode, sort])
 
+  useEffect(() => {
+    // Scroll to all-courses section if coming from header link
+    const urlParams = new URLSearchParams(window.location.search)
+    if (urlParams.get('scroll') === 'true') {
+      setTimeout(() => {
+        const element = document.getElementById('all-courses')
+        if (element) {
+          const headerOffset = 80
+          const elementPosition = element.getBoundingClientRect().top
+          const offsetPosition = elementPosition + window.pageYOffset - headerOffset
+          window.scrollTo({
+            top: offsetPosition,
+            behavior: 'smooth'
+          })
+          // Remove scroll param from URL
+          window.history.replaceState({}, '', '/courses')
+        }
+      }, 300)
+    }
+  }, [])
+
   const fetchCourses = async () => {
     try {
       setLoading(true)
@@ -59,17 +80,21 @@ export default function Courses() {
   return (
     <>
       {/* Header Section - Migrated from courses.html */}
-      <div className="bg-gradient-sky-green text-white py-5">
-        <div className="container text-center">
-          <h1 className="display-4 fw-bold mb-3">Tất cả khóa học</h1>
-          <p className="lead">Khám phá các chương trình học toàn diện cho mọi trình độ</p>
+      <div className="bg-gradient-sky-green text-white py-5 position-relative overflow-hidden" id="all-courses" style={{ paddingTop: '100px', paddingBottom: '80px' }}>
+        <div className="position-absolute top-0 left-0 w-100 h-100" style={{ 
+          background: 'radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%), radial-gradient(circle at 80% 80%, rgba(255,255,255,0.1) 0%, transparent 50%)',
+          pointerEvents: 'none'
+        }}></div>
+        <div className="container text-center position-relative">
+          <h1 className="display-4 fw-bold mb-3" style={{ textShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>Tất cả khóa học</h1>
+          <p className="lead fs-5" style={{ opacity: 0.95 }}>Khám phá các chương trình học toàn diện cho mọi trình độ</p>
         </div>
       </div>
 
       {/* Courses Section */}
-      <div className="container my-5">
+      <div className="container my-5" style={{ paddingTop: '2rem' }}>
         {/* Search and Filter */}
-        <div className="row mb-4 g-3 align-items-center">
+        <div className="row mb-5 g-3 align-items-center">
           <div className="col-lg-5">
             <form onSubmit={handleSearch}>
               <div className="input-group input-group-lg">

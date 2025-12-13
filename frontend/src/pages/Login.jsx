@@ -35,7 +35,7 @@ export default function Login() {
         <nav className="navbar navbar-expand-lg navbar-light bg-white">
           <div className="container">
             <Link className="navbar-brand fw-bold" to="/courses">
-              <span className="gradient-text">Code Dạo</span>
+              <span className="gradient-text">Code Đơ</span>
             </Link>
             <div className="navbar-nav ms-auto">
               <Link className="nav-link text-brand-sky" to="/courses">
@@ -72,7 +72,7 @@ export default function Login() {
 
               <form onSubmit={handleSubmit}>
                 <div className="mb-3">
-                  <label htmlFor="email" className="form-label">
+                  <label htmlFor="email" className="form-label" style={{ color: '#2563eb', fontWeight: '600' }}>
                     Email
                   </label>
                   <input
@@ -88,7 +88,7 @@ export default function Login() {
                 </div>
 
                 <div className="mb-4">
-                  <label htmlFor="password" className="form-label">
+                  <label htmlFor="password" className="form-label" style={{ color: '#2563eb', fontWeight: '600' }}>
                     Mật khẩu
                   </label>
                   <input

@@ -47,6 +47,13 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('token', access_token)
       axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`
       await fetchUser()
+      
+      // Kiểm tra bài tập sắp hết hạn (chạy background, không cần đợi)
+      // Tạm thời comment để tránh lỗi
+      // axios.post('/api/check-deadlines').catch(err => {
+      //   console.log('Failed to check deadlines:', err)
+      // })
+      
       return { success: true }
     } catch (error) {
       return { success: false, error: error.response?.data?.detail || 'Đăng nhập thất bại' }
@@ -75,7 +82,7 @@ export const AuthProvider = ({ children }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, setUser, token, login, register, logout, loading }}>
+    <AuthContext.Provider value={{ user, setUser, token, login, register, logout, loading, fetchUser }}>
       {children}
     </AuthContext.Provider>
   )

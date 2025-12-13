@@ -1,5 +1,5 @@
 import enum
-from sqlalchemy import Column, Integer, String, Boolean, Enum, DateTime, func
+from sqlalchemy import Column, Integer, String, Boolean, Enum, DateTime, Numeric, func
 from ..db.base import Base
 
 
@@ -19,6 +19,7 @@ class User(Base):
     so_dien_thoai = Column(String(20))
     role = Column(Enum(UserRole), nullable=False, default=UserRole.student)
     is_active = Column(Boolean, default=True)
+    so_du = Column(Numeric(12, 2), default=0, nullable=False)  # Số dư ví (VNĐ)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

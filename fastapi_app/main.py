@@ -9,7 +9,7 @@ import os
 from .core.config import settings
 from .db.base import Base
 from .db.session import engine
-from .api.routes import auth, users, courses, content, progress, discussions, certificates, enrollments, assignments, quiz, stats, reviews, notifications, code_execution, payments
+from .api.routes import auth, users, courses, content, progress, discussions, certificates, enrollments, assignments, quiz, stats, reviews, notifications, code_execution, payments, wallet, admin_wallet, assignment_notifications, teacher_dashboard, messages
 
 # Import models to register metadata with Base
 from .models import user, course, course_content  # noqa: F401
@@ -22,6 +22,8 @@ from .models import quiz as quiz_model  # noqa: F401
 from .models import review  # noqa: F401
 from .models import notification  # noqa: F401
 from .models import payment  # noqa: F401
+from .models import deposit  # noqa: F401
+from .models import message  # noqa: F401
 
 
 def create_app() -> FastAPI:
@@ -68,11 +70,38 @@ def create_app() -> FastAPI:
     app.include_router(notifications.router, prefix="/api")
     app.include_router(code_execution.router, prefix="/api/code")
     app.include_router(payments.router, prefix="/api/payments")
+    app.include_router(wallet.router, prefix="/api/wallet")
+    app.include_router(admin_wallet.router, prefix="/api/admin")
+    app.include_router(assignment_notifications.router, prefix="/api")
+    app.include_router(teacher_dashboard.router, prefix="/api")
+    app.include_router(messages.router, prefix="/api")
 
     # Mount static files để serve PDF, video, và các file upload
     static_dir = "static"
     if os.path.exists(static_dir):
         app.mount("/static", StaticFiles(directory=static_dir), name="static")
+    
+    # Scheduled task: Kiểm tra bài tập sắp hết hạn mỗi giờ
+    @app.on_event("startup")
+    def startup_event():
+        import threading
+        import time
+        from .api.routes.assignment_notifications import check_and_notify_upcoming_deadlines
+        from .db.session import SessionLocal
+        
+        def periodic_check():
+            while True:
+                time.sleep(3600)  # Chờ 1 giờ
+                try:
+                    db = SessionLocal()
+                    check_and_notify_upcoming_deadlines(db)
+                    db.close()
+                except Exception as e:
+                    print(f"Error in periodic deadline check: {e}")
+        
+        # Chạy task định kỳ trong background thread
+        thread = threading.Thread(target=periodic_check, daemon=True)
+        thread.start()
 
     @app.get("/health")
     def health():

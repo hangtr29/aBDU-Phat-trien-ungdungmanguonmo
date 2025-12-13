@@ -13,6 +13,10 @@ function DiscussionSection({ courseId, teacher }) {
   const { user } = useAuth()
   const [discussions, setDiscussions] = useState([])
   const [newMessage, setNewMessage] = useState('')
+  const [newImage, setNewImage] = useState(null)  // File hình ảnh cho thảo luận mới
+  const [replyingTo, setReplyingTo] = useState(null)  // ID của thảo luận đang reply
+  const [replyText, setReplyText] = useState('')
+  const [replyImage, setReplyImage] = useState(null)  // File hình ảnh cho reply
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -32,16 +36,57 @@ function DiscussionSection({ courseId, teacher }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!newMessage.trim()) return
+    if (!newMessage.trim() && !newImage) return
 
     try {
-      await axios.post(`/api/courses/${courseId}/discussions`, {
-        noi_dung: newMessage
+      const formData = new FormData()
+      formData.append('noi_dung', newMessage)
+      formData.append('parent_id', '')
+      if (newImage) {
+        formData.append('hinh_anh', newImage)
+      }
+
+      await axios.post(`/api/courses/${courseId}/discussions`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
       })
       setNewMessage('')
+      setNewImage(null)
+      // Reset file input
+      const fileInput = document.getElementById('discussion-image-input')
+      if (fileInput) fileInput.value = ''
       fetchDiscussions()
     } catch (error) {
       alert('Gửi tin nhắn thất bại: ' + (error.response?.data?.detail || error.message))
+    }
+  }
+
+  const handleReply = async (parentId) => {
+    if (!replyText.trim() && !replyImage) return
+
+    try {
+      const formData = new FormData()
+      formData.append('noi_dung', replyText)
+      formData.append('parent_id', parentId.toString())
+      if (replyImage) {
+        formData.append('hinh_anh', replyImage)
+      }
+
+      await axios.post(`/api/courses/${courseId}/discussions`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      })
+      setReplyText('')
+      setReplyImage(null)
+      setReplyingTo(null)
+      // Reset file input
+      const fileInput = document.getElementById(`reply-image-input-${parentId}`)
+      if (fileInput) fileInput.value = ''
+      fetchDiscussions()
+    } catch (error) {
+      alert('Gửi trả lời thất bại: ' + (error.response?.data?.detail || error.message))
     }
   }
 
@@ -78,7 +123,7 @@ function DiscussionSection({ courseId, teacher }) {
       {/* Form gửi tin nhắn */}
       {user && (
         <form onSubmit={handleSubmit} className="mb-4">
-          <div className="input-group">
+          <div className="mb-2">
             <textarea
               className="form-control"
               rows="3"
@@ -86,6 +131,25 @@ function DiscussionSection({ courseId, teacher }) {
               onChange={(e) => setNewMessage(e.target.value)}
               placeholder="Nhập câu hỏi hoặc bình luận của bạn..."
             ></textarea>
+          </div>
+          <div className="d-flex justify-content-between align-items-center">
+            <div>
+              <label htmlFor="discussion-image-input" className="btn btn-sm btn-outline-secondary mb-0" style={{ cursor: 'pointer' }}>
+                <i className="bi bi-image"></i> Chọn hình ảnh
+              </label>
+              <input
+                id="discussion-image-input"
+                type="file"
+                accept="image/*"
+                onChange={(e) => setNewImage(e.target.files[0] || null)}
+                style={{ display: 'none' }}
+              />
+              {newImage && (
+                <span className="ms-2 text-muted small">
+                  <i className="bi bi-check-circle text-success"></i> {newImage.name}
+                </span>
+              )}
+            </div>
             <button className="btn btn-primary-custom" type="submit">
               <i className="bi bi-send"></i> Gửi
             </button>
@@ -100,19 +164,215 @@ function DiscussionSection({ courseId, teacher }) {
         </div>
       ) : (
         <div className="list-group">
-          {discussions.map((discussion) => (
-            <div key={discussion.id} className="list-group-item">
-              <div className="d-flex justify-content-between align-items-start mb-2">
-                <div>
-                  <strong>{discussion.user_id === teacher?.id ? teacher.ho_ten : 'Học viên'}</strong>
-                  <small className="text-muted ms-2">
-                    {new Date(discussion.created_at).toLocaleString('vi-VN')}
-                  </small>
+          {discussions.map((discussion) => {
+            const isTeacher = discussion.user_role === 'teacher' || discussion.user_id === teacher?.id
+            const displayName = discussion.user_name || 'Học viên'
+            
+            return (
+              <div key={discussion.id} className="list-group-item">
+                <div className="d-flex justify-content-between align-items-start mb-2">
+                  <div>
+                    <strong 
+                      className={isTeacher ? 'text-danger' : ''}
+                      style={isTeacher ? { color: '#dc3545' } : {}}
+                    >
+                      {displayName}
+                      {isTeacher && (
+                        <span className="badge bg-danger ms-2" style={{ fontSize: '0.7rem' }}>
+                          <i className="bi bi-person-badge"></i> Giảng viên
+                        </span>
+                      )}
+                    </strong>
+                    <small className="text-muted ms-2">
+                      {new Date(discussion.created_at).toLocaleString('vi-VN')}
+                    </small>
+                  </div>
+                  {user && (
+                    <button
+                      className="btn btn-sm btn-outline-primary"
+                      onClick={() => setReplyingTo(replyingTo === discussion.id ? null : discussion.id)}
+                    >
+                      <i className="bi bi-reply"></i> Trả lời
+                    </button>
+                  )}
                 </div>
+                {discussion.noi_dung && <p className="mb-3">{discussion.noi_dung}</p>}
+                {discussion.hinh_anh && (
+                  <div className="mb-3">
+                    <img 
+                      src={discussion.hinh_anh} 
+                      alt="Hình ảnh đính kèm" 
+                      className="img-fluid rounded"
+                      style={{ maxWidth: '500px', maxHeight: '400px', objectFit: 'contain' }}
+                      onError={(e) => {
+                        e.target.style.display = 'none'
+                      }}
+                    />
+                  </div>
+                )}
+                
+                {/* Form reply */}
+                {replyingTo === discussion.id && user && (
+                  <div className="mb-3 p-3 bg-light rounded">
+                    <div className="mb-2">
+                      <textarea
+                        className="form-control"
+                        rows="2"
+                        value={replyText}
+                        onChange={(e) => setReplyText(e.target.value)}
+                        placeholder="Nhập câu trả lời của bạn..."
+                      ></textarea>
+                    </div>
+                    <div className="mb-2">
+                      <label htmlFor={`reply-image-input-${discussion.id}`} className="btn btn-sm btn-outline-secondary mb-0" style={{ cursor: 'pointer' }}>
+                        <i className="bi bi-image"></i> Chọn hình ảnh
+                      </label>
+                      <input
+                        id={`reply-image-input-${discussion.id}`}
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => setReplyImage(e.target.files[0] || null)}
+                        style={{ display: 'none' }}
+                      />
+                      {replyImage && (
+                        <span className="ms-2 text-muted small">
+                          <i className="bi bi-check-circle text-success"></i> {replyImage.name}
+                        </span>
+                      )}
+                    </div>
+                    <div className="d-flex gap-2">
+                      <button
+                        className="btn btn-sm btn-primary"
+                        onClick={() => handleReply(discussion.id)}
+                      >
+                        <i className="bi bi-send"></i> Gửi trả lời
+                      </button>
+                      <button
+                        className="btn btn-sm btn-secondary"
+                        onClick={() => {
+                          setReplyingTo(null)
+                          setReplyText('')
+                          setReplyImage(null)
+                          const fileInput = document.getElementById(`reply-image-input-${discussion.id}`)
+                          if (fileInput) fileInput.value = ''
+                        }}
+                      >
+                        Hủy
+                      </button>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Hiển thị replies */}
+                {discussion.replies && discussion.replies.length > 0 && (
+                  <div className="ms-4 mt-3 border-start border-2 ps-3">
+                    {discussion.replies.map((reply) => {
+                      const isReplyTeacher = reply.user_role === 'teacher' || reply.user_id === teacher?.id
+                      const replyDisplayName = reply.user_name || 'Học viên'
+                      
+                      return (
+                        <div key={reply.id} className="mb-3 pb-3 border-bottom">
+                          <div className="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                              <strong 
+                                className={isReplyTeacher ? 'text-danger' : ''}
+                                style={isReplyTeacher ? { color: '#dc3545' } : {}}
+                              >
+                                <i className="bi bi-arrow-return-right me-1"></i>
+                                {replyDisplayName}
+                                {isReplyTeacher && (
+                                  <span className="badge bg-danger ms-2" style={{ fontSize: '0.7rem' }}>
+                                    <i className="bi bi-person-badge"></i> Giảng viên
+                                  </span>
+                                )}
+                              </strong>
+                              <small className="text-muted ms-2">
+                                {new Date(reply.created_at).toLocaleString('vi-VN')}
+                              </small>
+                            </div>
+                            {user && (
+                              <button
+                                className="btn btn-sm btn-outline-primary"
+                                onClick={() => setReplyingTo(replyingTo === reply.id ? null : reply.id)}
+                              >
+                                <i className="bi bi-reply"></i> Trả lời
+                              </button>
+                            )}
+                          </div>
+                          {reply.noi_dung && <p className="mb-0">{reply.noi_dung}</p>}
+                          {reply.hinh_anh && (
+                            <div className="mt-2">
+                              <img 
+                                src={reply.hinh_anh} 
+                                alt="Hình ảnh đính kèm" 
+                                className="img-fluid rounded"
+                                style={{ maxWidth: '500px', maxHeight: '400px', objectFit: 'contain' }}
+                                onError={(e) => {
+                                  e.target.style.display = 'none'
+                                }}
+                              />
+                            </div>
+                          )}
+                          
+                          {/* Form reply cho reply */}
+                          {replyingTo === reply.id && user && (
+                            <div className="mt-2 p-2 bg-light rounded">
+                              <div className="mb-2">
+                                <textarea
+                                  className="form-control"
+                                  rows="2"
+                                  value={replyText}
+                                  onChange={(e) => setReplyText(e.target.value)}
+                                  placeholder="Nhập câu trả lời của bạn..."
+                                ></textarea>
+                              </div>
+                              <div className="mb-2">
+                                <label htmlFor={`reply-image-input-reply-${reply.id}`} className="btn btn-sm btn-outline-secondary mb-0" style={{ cursor: 'pointer' }}>
+                                  <i className="bi bi-image"></i> Chọn hình ảnh
+                                </label>
+                                <input
+                                  id={`reply-image-input-reply-${reply.id}`}
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={(e) => setReplyImage(e.target.files[0] || null)}
+                                  style={{ display: 'none' }}
+                                />
+                                {replyImage && (
+                                  <span className="ms-2 text-muted small">
+                                    <i className="bi bi-check-circle text-success"></i> {replyImage.name}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="d-flex gap-2">
+                                <button
+                                  className="btn btn-sm btn-primary"
+                                  onClick={() => handleReply(reply.id)}
+                                >
+                                  <i className="bi bi-send"></i> Gửi trả lời
+                                </button>
+                                <button
+                                  className="btn btn-sm btn-secondary"
+                                  onClick={() => {
+                                    setReplyingTo(null)
+                                    setReplyText('')
+                                    setReplyImage(null)
+                                    const fileInput = document.getElementById(`reply-image-input-reply-${reply.id}`)
+                                    if (fileInput) fileInput.value = ''
+                                  }}
+                                >
+                                  Hủy
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
-              <p className="mb-0">{discussion.noi_dung}</p>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>
@@ -137,6 +397,7 @@ function AssignmentsSection({ courseId, isTeacher }) {
     is_required: false,
     diem_toi_da: 10
   })
+  const [assignmentFile, setAssignmentFile] = useState(null)
 
   useEffect(() => {
     fetchAssignments()
@@ -207,15 +468,26 @@ function AssignmentsSection({ courseId, isTeacher }) {
         }
       }
       
-      const payload = {
-        tieu_de: assignmentForm.tieu_de.trim(),
-        noi_dung: assignmentForm.noi_dung.trim(),
-        han_nop: hanNopValue,
-        is_required: assignmentForm.is_required || false,
-        diem_toi_da: parseFloat(assignmentForm.diem_toi_da) || 10
+      // Tạo FormData để gửi file
+      const formData = new FormData()
+      formData.append('tieu_de', assignmentForm.tieu_de.trim())
+      formData.append('noi_dung', assignmentForm.noi_dung.trim())
+      if (hanNopValue) {
+        formData.append('han_nop', hanNopValue)
+      }
+      formData.append('is_required', assignmentForm.is_required || false)
+      formData.append('diem_toi_da', parseFloat(assignmentForm.diem_toi_da) || 10)
+      
+      if (assignmentFile) {
+        formData.append('file', assignmentFile)
       }
       
-      await axios.post(`/api/courses/${courseId}/assignments`, payload)
+      await axios.post(`/api/courses/${courseId}/assignments`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      })
+      
       alert('Tạo bài tập thành công! Tất cả học viên sẽ nhận được thông báo.')
       setAssignmentForm({
         tieu_de: '',
@@ -224,6 +496,7 @@ function AssignmentsSection({ courseId, isTeacher }) {
         is_required: false,
         diem_toi_da: 10
       })
+      setAssignmentFile(null)
       setShowCreateForm(false)
       fetchAssignments()
     } catch (error) {
@@ -293,6 +566,7 @@ function AssignmentsSection({ courseId, isTeacher }) {
                       is_required: false,
                       diem_toi_da: 10
                     })
+                    setAssignmentFile(null)
                   }}
                 >
                   <i className="bi bi-x"></i> Hủy
@@ -320,6 +594,37 @@ function AssignmentsSection({ courseId, isTeacher }) {
                     required
                     placeholder="Mô tả chi tiết yêu cầu bài tập..."
                   />
+                </div>
+                <div className="mb-3">
+                  <label className="form-label">
+                    <i className="bi bi-paperclip me-1"></i>
+                    File đính kèm <small className="text-muted">(tùy chọn)</small>
+                  </label>
+                  <input
+                    type="file"
+                    className="form-control"
+                    onChange={(e) => setAssignmentFile(e.target.files[0] || null)}
+                    accept=".pdf,.doc,.docx,.txt,.zip,.rar"
+                  />
+                  <small className="text-muted">
+                    <i className="bi bi-info-circle me-1"></i>
+                    Hỗ trợ: PDF, Word, Text, ZIP, RAR (tối đa 10MB)
+                  </small>
+                  {assignmentFile && (
+                    <div className="mt-2">
+                      <span className="badge bg-info">
+                        <i className="bi bi-file-earmark me-1"></i>
+                        {assignmentFile.name}
+                      </span>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-danger ms-2"
+                        onClick={() => setAssignmentFile(null)}
+                      >
+                        <i className="bi bi-x"></i> Xóa
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div className="row">
                   <div className="col-md-6 mb-3">
@@ -425,6 +730,26 @@ function AssignmentsSection({ courseId, isTeacher }) {
               <div className="mb-3">
                 <p className="text-muted">{assignment.noi_dung}</p>
               </div>
+
+              {assignment.file_path && (
+                <div className="mb-3">
+                  <label className="form-label fw-bold">
+                    <i className="bi bi-paperclip me-1"></i>
+                    File đính kèm:
+                  </label>
+                  <div>
+                    <a 
+                      href={assignment.file_path.startsWith('http') ? assignment.file_path : `http://127.0.0.1:8001${assignment.file_path}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn btn-outline-primary btn-sm"
+                    >
+                      <i className="bi bi-download me-1"></i>
+                      Tải file đính kèm
+                    </a>
+                  </div>
+                </div>
+              )}
 
               <div className="mb-3">
                 <small className="text-muted d-block">

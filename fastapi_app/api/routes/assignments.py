@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from typing import Optional
+from datetime import datetime
 import os
 import uuid
 
@@ -14,7 +15,9 @@ from ...models.user import User, UserRole
 router = APIRouter()
 
 UPLOAD_DIR = "static/uploads/assignments"
+ASSIGNMENT_FILES_DIR = "static/uploads/assignment_files"  # File đính kèm bài tập
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+os.makedirs(ASSIGNMENT_FILES_DIR, exist_ok=True)
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
 
@@ -53,6 +56,7 @@ def list_assignments(course_id: int, db: Session = Depends(get_db)):
                 han_nop=a.han_nop,
                 is_required=a.is_required,
                 diem_toi_da=float(a.diem_toi_da) if a.diem_toi_da else 10.0,
+                file_path=a.file_path,
                 created_at=a.created_at
             ))
         return result
@@ -64,9 +68,14 @@ def list_assignments(course_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/courses/{course_id}/assignments", response_model=AssignmentOut, status_code=status.HTTP_201_CREATED)
-def create_assignment(
+async def create_assignment(
     course_id: int,
-    payload: AssignmentCreate,
+    tieu_de: str = Form(...),
+    noi_dung: str = Form(...),
+    han_nop: Optional[str] = Form(None),
+    is_required: bool = Form(False),
+    diem_toi_da: Optional[float] = Form(10.0),
+    file: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
@@ -77,13 +86,51 @@ def create_assignment(
         
         _ensure_course(db, course_id)
         
+        # Xử lý file upload nếu có
+        file_path = None
+        if file and file.filename:
+            # Kiểm tra kích thước file
+            contents = await file.read()
+            if len(contents) > MAX_FILE_SIZE:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"File quá lớn. Kích thước tối đa: {MAX_FILE_SIZE / 1024 / 1024}MB"
+                )
+            
+            # Tạo tên file unique
+            file_ext = os.path.splitext(file.filename)[1]
+            unique_filename = f"{uuid.uuid4().hex}{file_ext}"
+            file_path_save = os.path.join(ASSIGNMENT_FILES_DIR, unique_filename)
+            
+            # Lưu file
+            with open(file_path_save, "wb") as f:
+                f.write(contents)
+            
+            # Đường dẫn để trả về cho client
+            file_path = f"/static/uploads/assignment_files/{unique_filename}"
+        
+        # Parse datetime nếu có
+        han_nop_datetime = None
+        if han_nop:
+            if isinstance(han_nop, str):
+                try:
+                    if 'T' in han_nop:
+                        han_nop_datetime = datetime.fromisoformat(han_nop.replace('Z', '+00:00'))
+                    else:
+                        han_nop_datetime = datetime.fromisoformat(f"{han_nop}T23:59:00")
+                except:
+                    han_nop_datetime = None
+            else:
+                han_nop_datetime = han_nop
+        
         assignment = Assignment(
             khoa_hoc_id=course_id,
-            tieu_de=payload.tieu_de,
-            noi_dung=payload.noi_dung,
-            han_nop=payload.han_nop,
-            is_required=payload.is_required,
-            diem_toi_da=payload.diem_toi_da
+            tieu_de=tieu_de.strip(),
+            noi_dung=noi_dung.strip(),
+            han_nop=han_nop_datetime,
+            is_required=is_required,
+            diem_toi_da=diem_toi_da,
+            file_path=file_path
         )
         
         db.add(assignment)
@@ -99,12 +146,17 @@ def create_assignment(
             ).all()
             
             from ...models.notification import Notification
+            from ...models.course import Course
+            course = db.query(Course).filter(Course.id == course_id).first()
+            course_name = course.tieu_de if course else "khóa học"
+            
             for enrollment in enrollments:
+                # Thông báo bài tập mới
                 notification = Notification(
                     user_id=enrollment.user_id,
                     loai="assignment",
-                    tieu_de=f"Bài tập mới: {payload.tieu_de}",
-                    noi_dung=f"Giáo viên đã tạo bài tập mới cho khóa học",
+                    tieu_de=f"📝 Bài tập mới: {tieu_de}",
+                    noi_dung=f"Giáo viên đã tạo bài tập mới cho khóa học '{course_name}'. Vui lòng kiểm tra và nộp bài đúng hạn!",
                     link=f"/learn/{course_id}?tab=assignments"
                 )
                 db.add(notification)

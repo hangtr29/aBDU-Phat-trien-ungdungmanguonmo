@@ -14,6 +14,7 @@ class Assignment(Base):
     han_nop = Column(DateTime(timezone=True))
     is_required = Column(Boolean, default=False)
     diem_toi_da = Column(Numeric(5, 2), default=10.0)
+    file_path = Column(String(500))  # File đính kèm bài tập
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     course = relationship("Course", backref="assignments")
@@ -35,6 +36,7 @@ class Submission(Base):
 
     assignment = relationship("Assignment", backref="submissions")
     user = relationship("User", backref="submissions")
+
 
 
 

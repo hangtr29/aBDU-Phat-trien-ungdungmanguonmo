@@ -11,6 +11,7 @@ from ...models.enrollment import Enrollment
 from ...schemas.payment import PaymentCreate, PaymentOut, PaymentCallback, PaymentLinkResponse
 from ...api.deps import get_current_active_user
 from ...models.user import User
+from decimal import Decimal
 
 router = APIRouter()
 
@@ -152,6 +153,92 @@ def get_my_payments(
         Payment.user_id == current_user.id
     ).order_by(Payment.created_at.desc()).all()
     return payments
+
+
+@router.post("/buy-with-wallet", response_model=PaymentOut)
+def buy_course_with_wallet(
+    khoa_hoc_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Mua khóa học bằng số dư ví"""
+    # Kiểm tra khóa học tồn tại
+    course = db.query(Course).filter(Course.id == khoa_hoc_id).first()
+    if not course:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Khóa học không tồn tại"
+        )
+
+    # Kiểm tra khóa học có phí không
+    if not course.gia or course.gia <= 0:
+        # Khóa học miễn phí, đăng ký luôn
+        enrollment = db.query(Enrollment).filter(
+            Enrollment.user_id == current_user.id,
+            Enrollment.khoa_hoc_id == khoa_hoc_id
+        ).first()
+        if not enrollment:
+            enrollment = Enrollment(
+                user_id=current_user.id,
+                khoa_hoc_id=khoa_hoc_id,
+                trang_thai='active'
+            )
+            db.add(enrollment)
+            db.commit()
+        return {"message": "Đăng ký khóa học miễn phí thành công"}
+
+    # Kiểm tra đã đăng ký chưa
+    existing_enrollment = db.query(Enrollment).filter(
+        Enrollment.user_id == current_user.id,
+        Enrollment.khoa_hoc_id == khoa_hoc_id,
+        Enrollment.trang_thai == 'active'
+    ).first()
+    if existing_enrollment:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Bạn đã đăng ký khóa học này rồi"
+        )
+
+    # Kiểm tra số dư
+    so_du = current_user.so_du or Decimal("0")
+    if so_du < course.gia:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Số dư không đủ. Số dư hiện tại: {so_du:,.0f} VNĐ, Giá khóa học: {course.gia:,.0f} VNĐ"
+        )
+
+    # Trừ tiền từ số dư
+    current_user.so_du = so_du - course.gia
+
+    # Tạo mã đơn hàng
+    ma_don_hang = generate_order_id()
+
+    # Tạo payment record với trạng thái completed
+    payment = Payment(
+        user_id=current_user.id,
+        khoa_hoc_id=khoa_hoc_id,
+        so_tien=course.gia,
+        phuong_thuc=PaymentMethod.bank_transfer,
+        trang_thai=PaymentStatus.completed,
+        ma_don_hang=ma_don_hang,
+        ma_giao_dich=f"WALLET_{uuid.uuid4().hex[:16].upper()}",
+        ngay_thanh_toan=datetime.utcnow()
+    )
+    db.add(payment)
+
+    # Tự động đăng ký khóa học
+    enrollment = Enrollment(
+        user_id=current_user.id,
+        khoa_hoc_id=khoa_hoc_id,
+        trang_thai='active'
+    )
+    db.add(enrollment)
+
+    db.commit()
+    db.refresh(payment)
+    db.refresh(current_user)
+
+    return payment
 
 
 @router.post("/demo-complete", response_model=PaymentOut)

@@ -1,5 +1,5 @@
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Body
+from fastapi import APIRouter, Depends, HTTPException, status, Body, BackgroundTasks
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
@@ -32,7 +32,10 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/auth/login", response_model=Token)
-def login(payload: LoginRequest = Body(...), db: Session = Depends(get_db)):
+def login(
+    payload: LoginRequest = Body(...), 
+    db: Session = Depends(get_db)
+):
     # Nhận JSON body: { "email": "...", "password": "..." }
     username = payload.email
     password = payload.password
@@ -40,6 +43,10 @@ def login(payload: LoginRequest = Body(...), db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == username).first()
     if not user or not verify_password(password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Sai email hoặc mật khẩu")
+    
+    # Kiểm tra user có active không
+    if not user.is_active:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tài khoản đã bị khóa")
 
     token = create_access_token(subject=str(user.id))
     return Token(access_token=token)

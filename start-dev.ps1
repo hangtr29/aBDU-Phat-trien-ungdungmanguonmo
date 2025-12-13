@@ -1,37 +1,44 @@
-# Script chạy cả Backend (FastAPI) và Frontend (React) cùng lúc
-# Chạy từ thư mục root của project
+# Script chay ca Backend (FastAPI) va Frontend (React) cung luc
+# Chay tu thu muc root cua project
 
-Write-Host "🚀 Bắt đầu chạy Backend và Frontend..." -ForegroundColor Green
+Write-Host "Bat dau chay Backend va Frontend..." -ForegroundColor Green
 
 # Activate venv
-Write-Host "`n📦 Activating virtual environment..." -ForegroundColor Yellow
+Write-Host ""
+Write-Host "Activating virtual environment..." -ForegroundColor Yellow
 & .\venv\Scripts\Activate.ps1
 
-# Kiểm tra xem frontend đã cài dependencies chưa
+# Kiem tra xem frontend da cai dependencies chua
 if (-not (Test-Path "frontend\node_modules")) {
-    Write-Host "`n⚠️  Frontend chưa có node_modules. Đang cài đặt..." -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "Frontend chua co node_modules. Dang cai dat..." -ForegroundColor Yellow
     Set-Location frontend
     npm install
     Set-Location ..
 }
 
-# Chạy Backend trong background
-Write-Host "`n🔧 Khởi động Backend FastAPI (port 8001)..." -ForegroundColor Cyan
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$PWD'; .\venv\Scripts\Activate.ps1; uvicorn fastapi_app.main:app --reload --port 8001" -WindowStyle Normal
+# Chay Backend trong background
+Write-Host ""
+Write-Host "Khoi dong Backend FastAPI (port 8001)..." -ForegroundColor Cyan
+$backendCommand = "cd '$PWD'; .\venv\Scripts\Activate.ps1; uvicorn fastapi_app.main:app --reload --port 8001"
+Start-Process powershell -ArgumentList "-NoExit", "-Command", $backendCommand -WindowStyle Normal
 
-# Đợi backend khởi động
+# Doi backend khoi dong
 Start-Sleep -Seconds 3
 
-# Chạy Frontend trong background
-Write-Host "`n🎨 Khởi động Frontend React (port 3000)..." -ForegroundColor Cyan
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$PWD\frontend'; npm run dev" -WindowStyle Normal
+# Chay Frontend trong background
+Write-Host ""
+Write-Host "Khoi dong Frontend React (port 3000)..." -ForegroundColor Cyan
+$frontendCommand = "cd '$PWD\frontend'; npm run dev"
+Start-Process powershell -ArgumentList "-NoExit", "-Command", $frontendCommand -WindowStyle Normal
 
-Write-Host "`n✅ Đã khởi động cả 2 server!" -ForegroundColor Green
-Write-Host "`n📍 Truy cập:" -ForegroundColor Yellow
+Write-Host ""
+Write-Host "Da khoi dong ca 2 server!" -ForegroundColor Green
+Write-Host ""
+Write-Host "Truy cap:" -ForegroundColor Yellow
 Write-Host "   - Frontend: http://localhost:3000" -ForegroundColor White
 Write-Host "   - Backend API: http://127.0.0.1:8001" -ForegroundColor White
 Write-Host "   - API Docs: http://127.0.0.1:8001/docs" -ForegroundColor White
-Write-Host "`n💡 Để dừng server, đóng các cửa sổ PowerShell đã mở" -ForegroundColor Gray
-
-
-
+Write-Host ""
+Write-Host "De dung server, dong cac cua so PowerShell da mo" -ForegroundColor Gray
+Write-Host ""

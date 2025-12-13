@@ -10,6 +10,7 @@ class AssignmentBase(BaseModel):
     han_nop: Optional[datetime] = None
     is_required: bool = False
     diem_toi_da: Optional[Decimal] = 10.0
+    file_path: Optional[str] = None
 
     @field_validator('han_nop', mode='before')
     @classmethod
@@ -95,6 +96,7 @@ class SubmissionOut(SubmissionBase):
 
     class Config:
         from_attributes = True
+
 
 
 

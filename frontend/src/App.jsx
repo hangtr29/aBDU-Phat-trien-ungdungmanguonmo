@@ -11,6 +11,9 @@ import AdminDashboard from './pages/AdminDashboard'
 import TeacherGrading from './pages/TeacherGrading'
 import UserProfile from './pages/UserProfile'
 import Certificate from './pages/Certificate'
+import AddFunds from './pages/AddFunds'
+import TransactionGuide from './pages/TransactionGuide'
+import SecurityPolicy from './pages/SecurityPolicy'
 import Layout from './components/Layout'
 import { AuthProvider } from './context/AuthContext'
 
@@ -46,6 +49,9 @@ function App() {
             <Route path="grade/:courseId/:assignmentId" element={<TeacherGrading />} />
             <Route path="profile" element={<UserProfile />} />
             <Route path="certificate/:id" element={<Certificate />} />
+            <Route path="addfunds" element={<AddFunds />} />
+            <Route path="transaction-guide" element={<TransactionGuide />} />
+            <Route path="security-policy" element={<SecurityPolicy />} />
             <Route path="dashboard" element={<DashboardRouter />} />
           </Route>
         </Routes>
