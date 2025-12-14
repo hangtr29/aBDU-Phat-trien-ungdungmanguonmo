@@ -20,6 +20,10 @@ def list_courses(
     sort: str | None = Query("newest", description="newest|price_asc|price_desc"),
     db: Session = Depends(get_db),
 ):
+    """
+    Lấy danh sách khóa học.
+    Luôn trả về array [] (không bao giờ trả về object {}).
+    """
     try:
         query = db.query(Course)
 
@@ -46,13 +50,19 @@ def list_courses(
         else:
             query = query.order_by(Course.created_at.desc())
 
+        # query.all() luôn trả về list (có thể rỗng), không bao giờ None
         result = query.all()
-        # Đảm bảo luôn trả về list, không phải None
-        return result if result is not None else []
+        
+        # Đảm bảo chắc chắn là list
+        if not isinstance(result, list):
+            return []
+        
+        return result
     except Exception as e:
-        # Nếu có lỗi, trả về list rỗng thay vì raise exception
-        # (hoặc có thể log lỗi và trả về [])
+        # Nếu có bất kỳ lỗi nào, trả về list rỗng
         print(f"Error fetching courses: {e}")
+        import traceback
+        traceback.print_exc()
         return []
 
 
@@ -158,8 +168,13 @@ def list_pending_courses(
     
     try:
         courses = db.query(Course).filter(Course.trang_thai == CourseStatus.draft).order_by(Course.created_at.desc()).all()
-        return courses if courses is not None else []
+        # Đảm bảo chắc chắn là list
+        if not isinstance(courses, list):
+            return []
+        return courses
     except Exception as e:
         print(f"Error fetching pending courses: {e}")
+        import traceback
+        traceback.print_exc()
         return []
 
