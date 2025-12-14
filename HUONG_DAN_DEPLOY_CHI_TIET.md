@@ -27,9 +27,31 @@ Hướng dẫn từng bước cụ thể để deploy backend lên Render và fr
    - Chọn **"Web Service"**
 
 3. **Kết nối GitHub:**
-   - Nếu chưa kết nối, click **"Connect account"**
-   - Chọn repository: `BDU-Phat-trien-ungdungmanguonmo` (hoặc tên repo của bạn)
-   - Click **"Connect"**
+   
+   **Nếu chưa thấy repository trong danh sách:**
+   
+   a. **Kết nối GitHub Account:**
+      - Click nút **"Connect account"** hoặc **"Connect GitHub"** (nếu có)
+      - Authorize Render truy cập GitHub repositories
+      - Chọn quyền truy cập (thường chọn "All repositories" hoặc chỉ repository cụ thể)
+      - Click **"Authorize"** hoặc **"Install"**
+   
+   b. **Tìm repository:**
+      - Sau khi kết nối, Render sẽ hiển thị danh sách repositories
+      - Sử dụng thanh **"Search"** để tìm repository của bạn
+      - Tên repository có thể là:
+        - `BDU-Phat-trien-ungdungmanguonmo`
+        - `Webhoctructuyen`
+        - Hoặc tên khác mà bạn đã đặt
+   
+   c. **Nếu vẫn không thấy:**
+      - Kiểm tra bạn đã đăng nhập đúng GitHub account chưa
+      - Kiểm tra repository có thuộc organization không (có thể cần authorize organization)
+      - Thử refresh trang hoặc đăng xuất/đăng nhập lại Render
+   
+   d. **Chọn repository:**
+      - Click vào repository bạn muốn deploy
+      - Render sẽ tự động detect branch `main` (hoặc branch mặc định)
 
 4. **Cấu hình cơ bản:**
    - **Name**: `code-do-backend` (hoặc tên bạn muốn)
@@ -43,8 +65,10 @@ Hướng dẫn từng bước cụ thể để deploy backend lên Render và fr
      ```
    - **Start Command**: 
      ```bash
-     cd fastapi_app && uvicorn main:app --host 0.0.0.0 --port $PORT
+     uvicorn fastapi_app.main:app --host 0.0.0.0 --port $PORT
      ```
+     
+     **⚠️ QUAN TRỌNG:** Phải chạy từ thư mục gốc (không `cd fastapi_app`) và dùng `fastapi_app.main:app` để tránh lỗi relative import!
 
 ### Bước 1.2: Cấu hình Environment Variables
 
@@ -235,6 +259,21 @@ Vercel sẽ tự động detect Vite, nhưng cần kiểm tra:
 2. Xem logs trên Render để biết module nào thiếu
 3. Thêm vào `requirements.txt` và commit lại
 
+**Lỗi:** `ImportError: attempted relative import with no known parent package`
+
+**Giải pháp:**
+1. Vào Render Dashboard → Web Service → **Settings** → **Start Command**
+2. Thay đổi Start Command từ:
+   ```bash
+   cd fastapi_app && uvicorn main:app --host 0.0.0.0 --port $PORT
+   ```
+   Thành:
+   ```bash
+   uvicorn fastapi_app.main:app --host 0.0.0.0 --port $PORT
+   ```
+3. Click **Save Changes** → Render sẽ tự động redeploy
+4. **Lưu ý:** Phải chạy từ thư mục gốc và dùng `fastapi_app.main:app` (không phải `main:app`)
+
 **Lỗi:** `Database connection failed`
 
 **Giải pháp:**
@@ -282,6 +321,37 @@ Vercel sẽ tự động detect Vite, nhưng cần kiểm tra:
    # Từ máy local
    .\scripts\run_migrations_render.ps1 -DatabaseUrl "postgresql://..."
    ```
+
+### ❌ Không thấy repository trong danh sách Render
+
+**Vấn đề:** Khi tạo Web Service, không thấy repository `BDU-Phat-trien-ungdungmanguonmo` trong danh sách.
+
+**Giải pháp:**
+
+1. **Kiểm tra kết nối GitHub:**
+   - Click nút **"Connect account"** hoặc **"Connect GitHub"**
+   - Đảm bảo bạn đã authorize Render truy cập repositories
+   - Chọn quyền truy cập: "All repositories" hoặc repository cụ thể
+
+2. **Tìm repository bằng Search:**
+   - Sử dụng thanh **"Search"** ở trên danh sách repositories
+   - Gõ tên repository (có thể là tên khác, không phải `BDU-Phat-trien-ungdungmanguonmo`)
+   - Thử tìm: `Webhoctructuyen`, `code-do`, hoặc tên khác
+
+3. **Kiểm tra tên repository thực tế:**
+   - Vào GitHub: https://github.com/legiabao01
+   - Xem danh sách repositories của bạn
+   - Copy tên repository chính xác
+
+4. **Nếu repository thuộc Organization:**
+   - Cần authorize organization trên GitHub
+   - Vào GitHub Settings → Applications → Authorized OAuth Apps
+   - Tìm Render và cấp quyền truy cập organization
+
+5. **Thử cách khác - Dùng Public Git Repository:**
+   - Trên Render, chọn tab **"Public Git Repository"**
+   - Dán URL GitHub: `https://github.com/legiabao01/BDU-Phat-trien-ungdungmanguonmo`
+   - Render sẽ tự động detect repository
 
 ---
 
