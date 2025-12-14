@@ -16,8 +16,8 @@ $psqlPath = "C:\Program Files\PostgreSQL\18\bin\psql.exe"
 if (-not (Test-Path $psqlPath)) {
     $psqlPath = "C:\Program Files\PostgreSQL\17\bin\psql.exe"
     if (-not (Test-Path $psqlPath)) {
-        Write-Host "❌ ERROR: Không tìm thấy psql.exe" -ForegroundColor Red
-        Write-Host "   Vui lòng cài đặt PostgreSQL hoặc sử dụng Render Shell" -ForegroundColor Yellow
+        Write-Host "ERROR: Khong tim thay psql.exe" -ForegroundColor Red
+        Write-Host "   Vui long cai dat PostgreSQL hoac su dung Render Shell" -ForegroundColor Yellow
         exit 1
     }
 }
@@ -27,26 +27,29 @@ if ($DatabaseUrl -match "postgresql\+psycopg://") {
     $DatabaseUrl = $DatabaseUrl -replace "postgresql\+psycopg://", "postgresql://"
 }
 
-Write-Host "📦 Đang kết nối với database..." -ForegroundColor Yellow
+Write-Host "Dang ket noi voi database..." -ForegroundColor Yellow
 Write-Host "   URL: $($DatabaseUrl -replace ':[^:@]+@', ':****@')" -ForegroundColor Gray
 Write-Host ""
 
 # Test connection
-Write-Host "🔄 Kiểm tra kết nối..." -ForegroundColor Yellow
-$testResult = & $psqlPath $DatabaseUrl -c "SELECT version();" 2>&1
-
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "❌ ERROR: Không thể kết nối với database!" -ForegroundColor Red
+Write-Host "Kiem tra ket noi..." -ForegroundColor Yellow
+try {
+    $testResult = & $psqlPath $DatabaseUrl -c "SELECT version();" 2>&1 | Out-String
+    if ($LASTEXITCODE -ne 0) {
+        throw "Connection failed"
+    }
+} catch {
+    Write-Host "ERROR: Khong the ket noi voi database!" -ForegroundColor Red
     Write-Host $testResult -ForegroundColor Red
     Write-Host ""
-    Write-Host "💡 Gợi ý:" -ForegroundColor Yellow
-    Write-Host "   1. Kiểm tra External Database URL trong Render Dashboard" -ForegroundColor White
-    Write-Host "   2. Đảm bảo External Access đã được bật" -ForegroundColor White
-    Write-Host "   3. Hoặc sử dụng Render Shell (khuyến nghị)" -ForegroundColor White
+    Write-Host "Goi y:" -ForegroundColor Yellow
+    Write-Host "   1. Kiem tra External Database URL trong Render Dashboard" -ForegroundColor White
+    Write-Host "   2. Dam bao External Access da duoc bat" -ForegroundColor White
+    Write-Host "   3. Hoac su dung Render Shell (khuyen nghi)" -ForegroundColor White
     exit 1
 }
 
-Write-Host "✅ Kết nối thành công!" -ForegroundColor Green
+Write-Host "Ket noi thanh cong!" -ForegroundColor Green
 Write-Host ""
 
 # Danh sách migrations
@@ -54,65 +57,72 @@ $migrations = @(
     "database/schema_pg.sql",
     "database/create_enrollment_table.sql",
     "database/create_notifications_table.sql",
-    "database/create_payments_table.sql",
-    "database/add_tai_lieu_to_lessons.sql",
-    "database/add_diem_toi_da_to_assignments.sql",
+    "database/create_payment_table.sql",
+    "database/add_lesson_resources.sql",
+    "database/add_diem_toi_da_to_bai_tap.sql",
     "database/create_deposit_transactions.sql",
     "database/add_deposit_fields.sql",
     "database/add_user_balance.sql"
 )
 
-$projectRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+# Tính project root: từ scripts/ lên 1 cấp
+$projectRoot = Split-Path -Parent $PSScriptRoot
 $successCount = 0
 $failedCount = 0
 
-Write-Host "🔄 Bắt đầu chạy migrations..." -ForegroundColor Cyan
+Write-Host "Bat dau chay migrations..." -ForegroundColor Cyan
 Write-Host ""
 
 foreach ($migration in $migrations) {
     $fullPath = Join-Path $projectRoot $migration
     
     if (-not (Test-Path $fullPath)) {
-        Write-Host "⚠️  SKIP: $migration (file not found)" -ForegroundColor Yellow
+        Write-Host "SKIP: $migration (file not found)" -ForegroundColor Yellow
         continue
     }
     
-    Write-Host "📄 Running: $migration..." -ForegroundColor Yellow
+    Write-Host "Running: $migration..." -ForegroundColor Yellow
     
     # Chạy migration
-    $result = & $psqlPath $DatabaseUrl -f $fullPath 2>&1
-    
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "   ✅ Completed: $migration" -ForegroundColor Green
-        $successCount++
-    } else {
-        # Kiểm tra xem có phải lỗi "already exists" không
-        $errorText = $result -join " "
-        if ($errorText -match "already exists" -or $errorText -match "duplicate") {
-            Write-Host "   ⚠️  Skipped (already exists): $migration" -ForegroundColor Yellow
+    try {
+        $result = & $psqlPath $DatabaseUrl -f $fullPath 2>&1 | Out-String
+        
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "   Completed: $migration" -ForegroundColor Green
             $successCount++
         } else {
-            Write-Host "   ❌ ERROR in $migration" -ForegroundColor Red
-            Write-Host $result -ForegroundColor Red
-            $failedCount++
+            # Kiểm tra xem có phải lỗi "already exists" không
+            $errorText = $result
+            if ($errorText -match "already exists" -or $errorText -match "duplicate") {
+                Write-Host "   Skipped (already exists): $migration" -ForegroundColor Yellow
+                $successCount++
+            } else {
+                Write-Host "   ERROR in $migration" -ForegroundColor Red
+                Write-Host $result -ForegroundColor Red
+                $failedCount++
+            }
         }
+    } catch {
+        Write-Host "   ERROR in $migration" -ForegroundColor Red
+        Write-Host $_.Exception.Message -ForegroundColor Red
+        $failedCount++
     }
     Write-Host ""
 }
 
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "📊 Migration Summary:" -ForegroundColor Cyan
-Write-Host "   ✅ Success: $successCount" -ForegroundColor Green
-Write-Host "   ❌ Failed: $failedCount" -ForegroundColor $(if ($failedCount -gt 0) { "Red" } else { "Green" })
+Write-Host "Migration Summary:" -ForegroundColor Cyan
+Write-Host "   Success: $successCount" -ForegroundColor Green
+Write-Host "   Failed: $failedCount" -ForegroundColor $(if ($failedCount -gt 0) { "Red" } else { "Green" })
 Write-Host "========================================" -ForegroundColor Cyan
 
 if ($failedCount -gt 0) {
     Write-Host ""
-    Write-Host "⚠️  Một số migrations thất bại. Vui lòng kiểm tra lỗi ở trên." -ForegroundColor Yellow
+    Write-Host "Mot so migrations that bai. Vui long kiem tra loi o tren." -ForegroundColor Yellow
     exit 1
 } else {
     Write-Host ""
-    Write-Host "🎉 Tất cả migrations đã hoàn thành thành công!" -ForegroundColor Green
+    Write-Host "Tat ca migrations da hoan thanh thanh cong!" -ForegroundColor Green
     exit 0
 }
 
