@@ -36,19 +36,30 @@ function DiscussionSection({ courseId, teacher }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!newMessage.trim() && !newImage) return
+    if (!newMessage.trim() && !newImage) {
+      alert('Vui lòng nhập nội dung hoặc chọn hình ảnh')
+      return
+    }
 
     try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        alert('Bạn chưa đăng nhập. Vui lòng đăng nhập lại.')
+        return
+      }
+
       const formData = new FormData()
-      formData.append('noi_dung', newMessage)
-      formData.append('parent_id', '')
+      // Luôn gửi noi_dung, có thể là chuỗi rỗng nếu chỉ có hình ảnh
+      formData.append('noi_dung', newMessage || '')
+      // Không gửi parent_id nếu là thảo luận mới (không phải reply)
       if (newImage) {
         formData.append('hinh_anh', newImage)
       }
 
       await axios.post(`/api/courses/${courseId}/discussions`, formData, {
         headers: {
-          'Content-Type': 'multipart/form-data'
+          'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${token}`
         }
       })
       setNewMessage('')
@@ -58,16 +69,27 @@ function DiscussionSection({ courseId, teacher }) {
       if (fileInput) fileInput.value = ''
       fetchDiscussions()
     } catch (error) {
-      alert('Gửi tin nhắn thất bại: ' + (error.response?.data?.detail || error.message))
+      const errorMsg = error.response?.data?.detail || error.message || 'Gửi tin nhắn thất bại'
+      console.error('Error submitting discussion:', error)
+      alert('Gửi tin nhắn thất bại: ' + errorMsg)
     }
   }
 
   const handleReply = async (parentId) => {
-    if (!replyText.trim() && !replyImage) return
+    if (!replyText.trim() && !replyImage) {
+      alert('Vui lòng nhập nội dung hoặc chọn hình ảnh')
+      return
+    }
 
     try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        alert('Bạn chưa đăng nhập. Vui lòng đăng nhập lại.')
+        return
+      }
+
       const formData = new FormData()
-      formData.append('noi_dung', replyText)
+      formData.append('noi_dung', replyText || '')
       formData.append('parent_id', parentId.toString())
       if (replyImage) {
         formData.append('hinh_anh', replyImage)
@@ -75,7 +97,8 @@ function DiscussionSection({ courseId, teacher }) {
 
       await axios.post(`/api/courses/${courseId}/discussions`, formData, {
         headers: {
-          'Content-Type': 'multipart/form-data'
+          'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${token}`
         }
       })
       setReplyText('')
@@ -86,7 +109,9 @@ function DiscussionSection({ courseId, teacher }) {
       if (fileInput) fileInput.value = ''
       fetchDiscussions()
     } catch (error) {
-      alert('Gửi trả lời thất bại: ' + (error.response?.data?.detail || error.message))
+      const errorMsg = error.response?.data?.detail || error.message || 'Gửi trả lời thất bại'
+      console.error('Error submitting reply:', error)
+      alert('Gửi trả lời thất bại: ' + errorMsg)
     }
   }
 
@@ -169,9 +194,9 @@ function DiscussionSection({ courseId, teacher }) {
             const displayName = discussion.user_name || 'Học viên'
             
             return (
-              <div key={discussion.id} className="list-group-item">
-                <div className="d-flex justify-content-between align-items-start mb-2">
-                  <div>
+            <div key={discussion.id} className="list-group-item">
+              <div className="d-flex justify-content-between align-items-start mb-2">
+                <div>
                     <strong 
                       className={isTeacher ? 'text-danger' : ''}
                       style={isTeacher ? { color: '#dc3545' } : {}}
@@ -183,10 +208,10 @@ function DiscussionSection({ courseId, teacher }) {
                         </span>
                       )}
                     </strong>
-                    <small className="text-muted ms-2">
-                      {new Date(discussion.created_at).toLocaleString('vi-VN')}
-                    </small>
-                  </div>
+                  <small className="text-muted ms-2">
+                    {new Date(discussion.created_at).toLocaleString('vi-VN')}
+                  </small>
+                </div>
                   {user && (
                     <button
                       className="btn btn-sm btn-outline-primary"
@@ -195,7 +220,7 @@ function DiscussionSection({ courseId, teacher }) {
                       <i className="bi bi-reply"></i> Trả lời
                     </button>
                   )}
-                </div>
+              </div>
                 {discussion.noi_dung && <p className="mb-3">{discussion.noi_dung}</p>}
                 {discussion.hinh_anh && (
                   <div className="mb-3">
@@ -208,7 +233,7 @@ function DiscussionSection({ courseId, teacher }) {
                         e.target.style.display = 'none'
                       }}
                     />
-                  </div>
+            </div>
                 )}
                 
                 {/* Form reply */}

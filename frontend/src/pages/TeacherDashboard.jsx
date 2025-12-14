@@ -130,68 +130,68 @@ export default function TeacherDashboard() {
 
       {/* Tab: Tổng quan */}
       {activeTab === 'overview' && (
-        <div className="card-soft">
-          <h5 className="mb-4">
-            <i className="bi bi-book text-brand-sky me-2"></i>Khóa học của tôi
-          </h5>
-          {courses.length === 0 ? (
-            <div className="text-center py-5">
-              <i className="bi bi-book text-muted" style={{ fontSize: '4rem' }}></i>
-              <p className="text-muted mt-3">Bạn chưa có khóa học nào.</p>
-              <Link to="/courses" className="btn btn-primary-custom mt-2">
-                <i className="bi bi-plus-circle"></i> Tạo khóa học mới
-              </Link>
-            </div>
-          ) : (
-            <div className="table-responsive">
-              <table className="table table-hover">
-                <thead>
-                  <tr>
-                    <th>Tên khóa học</th>
-                    <th>Cấp độ</th>
-                    <th>Hình thức</th>
-                    <th>Học viên</th>
-                    <th>Giá</th>
-                    <th>Thao tác</th>
+      <div className="card-soft">
+        <h5 className="mb-4">
+          <i className="bi bi-book text-brand-sky me-2"></i>Khóa học của tôi
+        </h5>
+        {courses.length === 0 ? (
+          <div className="text-center py-5">
+            <i className="bi bi-book text-muted" style={{ fontSize: '4rem' }}></i>
+            <p className="text-muted mt-3">Bạn chưa có khóa học nào.</p>
+            <Link to="/courses" className="btn btn-primary-custom mt-2">
+              <i className="bi bi-plus-circle"></i> Tạo khóa học mới
+            </Link>
+          </div>
+        ) : (
+          <div className="table-responsive">
+            <table className="table table-hover">
+              <thead>
+                <tr>
+                  <th>Tên khóa học</th>
+                  <th>Cấp độ</th>
+                  <th>Hình thức</th>
+                  <th>Học viên</th>
+                  <th>Giá</th>
+                  <th>Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                {courses.map((course) => (
+                  <tr key={course.id}>
+                    <td><strong>{course.tieu_de}</strong></td>
+                    <td>
+                      <span className="badge-custom badge-info">{course.cap_do || 'N/A'}</span>
+                    </td>
+                    <td>
+                      <span className="badge-custom badge-success">{course.hinh_thuc || 'online'}</span>
+                    </td>
+                    <td>
+                      <span className="badge-custom badge-info">
+                        <i className="bi bi-people"></i> {course.student_count || 0}
+                      </span>
+                    </td>
+                    <td>{new Intl.NumberFormat('vi-VN').format(course.gia)} VNĐ</td>
+                    <td>
+                      <Link
+                        to={`/learn/${course.id}`}
+                        className="btn btn-sm btn-primary-custom me-2"
+                      >
+                        <i className="bi bi-eye"></i> Xem
+                      </Link>
+                      <Link
+                        to={`/learn/${course.id}?tab=assignments`}
+                        className="btn btn-sm btn-outline-custom"
+                      >
+                        <i className="bi bi-file-earmark-check"></i> Bài tập
+                      </Link>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {courses.map((course) => (
-                    <tr key={course.id}>
-                      <td><strong>{course.tieu_de}</strong></td>
-                      <td>
-                        <span className="badge-custom badge-info">{course.cap_do || 'N/A'}</span>
-                      </td>
-                      <td>
-                        <span className="badge-custom badge-success">{course.hinh_thuc || 'online'}</span>
-                      </td>
-                      <td>
-                        <span className="badge-custom badge-info">
-                          <i className="bi bi-people"></i> {course.student_count || 0}
-                        </span>
-                      </td>
-                      <td>{new Intl.NumberFormat('vi-VN').format(course.gia)} VNĐ</td>
-                      <td>
-                        <Link
-                          to={`/learn/${course.id}`}
-                          className="btn btn-sm btn-primary-custom me-2"
-                        >
-                          <i className="bi bi-eye"></i> Xem
-                        </Link>
-                        <Link
-                          to={`/learn/${course.id}?tab=assignments`}
-                          className="btn btn-sm btn-outline-custom"
-                        >
-                          <i className="bi bi-file-earmark-check"></i> Bài tập
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
       )}
 
       {/* Tab: Học viên */}

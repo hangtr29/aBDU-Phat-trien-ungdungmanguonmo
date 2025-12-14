@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
-from typing import List
+from typing import List, Optional
 from decimal import Decimal
 from datetime import datetime
 
@@ -109,7 +109,7 @@ def approve_deposit(
 @router.post("/deposits/{transaction_id}/reject")
 def reject_deposit(
     transaction_id: int,
-    ghi_chu: str = None,
+    ghi_chu: Optional[str] = Query(None, description="Lý do từ chối"),
     db: Session = Depends(get_db),
     admin: User = Depends(get_current_admin_user)
 ):

@@ -49,6 +49,14 @@ class DepositTransactionOut(BaseModel):
     created_at: datetime
     updated_at: Optional[datetime] = None
     user_name: Optional[str] = None
+    user_email: Optional[str] = None
+    ghi_chu: Optional[str] = None
+    ngay_duyet: Optional[datetime] = None
+    nguoi_duyet_id: Optional[int] = None
+
+    class Config:
+        from_attributes = True
+
 
     class Config:
         from_attributes = True

@@ -44,6 +44,16 @@ export default function PaymentModal({ course, onClose, onSuccess }) {
     try {
       const token = localStorage.getItem('token')
       
+      // Kiểm tra token tồn tại
+      if (!token) {
+        setError('Bạn chưa đăng nhập. Vui lòng đăng nhập lại.')
+        setLoading(false)
+        setTimeout(() => {
+          navigate('/login')
+        }, 2000)
+        return
+      }
+      
       // Kiểm tra số dư
       if (walletBalance < course.gia) {
         setShowInsufficientBalanceModal(true)
@@ -83,7 +93,17 @@ export default function PaymentModal({ course, onClose, onSuccess }) {
       }
       onClose()
     } catch (err) {
-      setError(err.response?.data?.detail || 'Thanh toán thất bại')
+      const errorMessage = err.response?.data?.detail || err.message || 'Thanh toán thất bại'
+      
+      // Xử lý lỗi token
+      if (err.response?.status === 401 || errorMessage.includes('token') || errorMessage.includes('Invalid') || errorMessage.includes('expired')) {
+        setError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.')
+        setTimeout(() => {
+          navigate('/login')
+        }, 2000)
+      } else {
+        setError(errorMessage)
+      }
     } finally {
       setLoading(false)
     }

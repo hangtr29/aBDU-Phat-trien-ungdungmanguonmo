@@ -16,6 +16,32 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(localStorage.getItem('token'))
   const [loading, setLoading] = useState(true)
 
+  // Setup axios interceptor để xử lý lỗi 401 (token hết hạn)
+  useEffect(() => {
+    const interceptor = axios.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.response?.status === 401) {
+          // Token hết hạn hoặc không hợp lệ
+          const errorDetail = error.response?.data?.detail || ''
+          if (errorDetail.includes('token') || errorDetail.includes('Invalid') || errorDetail.includes('expired')) {
+            // Xóa token và logout
+            logout()
+            // Redirect về trang login nếu không phải đang ở trang login
+            if (!window.location.pathname.includes('/login')) {
+              window.location.href = '/login'
+            }
+          }
+        }
+        return Promise.reject(error)
+      }
+    )
+
+    return () => {
+      axios.interceptors.response.eject(interceptor)
+    }
+  }, [])
+
   useEffect(() => {
     if (token) {
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`

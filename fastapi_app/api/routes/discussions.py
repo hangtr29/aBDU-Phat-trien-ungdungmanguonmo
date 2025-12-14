@@ -96,7 +96,7 @@ def list_discussions(
 @router.post("/courses/{course_id}/discussions", response_model=DiscussionOut, status_code=status.HTTP_201_CREATED)
 async def create_discussion(
     course_id: int,
-    noi_dung: str = Form(...),
+    noi_dung: Optional[str] = Form(None),
     parent_id: Optional[int] = Form(None),
     hinh_anh: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),

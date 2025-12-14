@@ -1,15 +1,19 @@
-# Script chạy TẤT CẢ migrations (bắt buộc)
-# Chạy: .\scripts\setup-all-migrations.ps1
+# Script chay TAT CA migrations (bat buoc)
+# Chay: .\scripts\setup-all-migrations.ps1
 
 $ErrorActionPreference = "Stop"
 
-Write-Host "`n========================================" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "  SETUP DATABASE MIGRATIONS" -ForegroundColor Cyan
-Write-Host "========================================`n" -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host ""
 
-# Tìm đường dẫn PostgreSQL
+# Tim duong dan PostgreSQL
 $psqlPath = $null
 $possiblePaths = @(
+    "C:\Program Files\PostgreSQL\18\bin\psql.exe",
+    "C:\Program Files\PostgreSQL\17\bin\psql.exe",
     "C:\Program Files\PostgreSQL\16\bin\psql.exe",
     "C:\Program Files\PostgreSQL\15\bin\psql.exe",
     "C:\Program Files\PostgreSQL\14\bin\psql.exe",
@@ -23,7 +27,7 @@ foreach ($path in $possiblePaths) {
     }
 }
 
-# Nếu không tìm thấy, thử tìm trong PATH
+# Neu khong tim thay, thu tim trong PATH
 if (-not $psqlPath) {
     $psqlInPath = Get-Command psql.exe -ErrorAction SilentlyContinue
     if ($psqlInPath) {
@@ -31,72 +35,81 @@ if (-not $psqlPath) {
     }
 }
 
-# Nếu vẫn không tìm thấy, báo lỗi
+# Neu van khong tim thay, bao loi
 if (-not $psqlPath) {
-    Write-Host "❌ Không tìm thấy psql.exe!" -ForegroundColor Red
-    Write-Host "Vui lòng:" -ForegroundColor Yellow
-    Write-Host "  1. Thêm PostgreSQL bin vào PATH, hoặc" -ForegroundColor Yellow
-    Write-Host "  2. Sửa đường dẫn trong script này" -ForegroundColor Yellow
+    Write-Host "LOI: Khong tim thay psql.exe!" -ForegroundColor Red
+    Write-Host "Vui long:" -ForegroundColor Yellow
+    Write-Host "  1. Them PostgreSQL bin vao PATH, hoac" -ForegroundColor Yellow
+    Write-Host "  2. Sua duong dan trong script nay" -ForegroundColor Yellow
     exit 1
 }
 
-Write-Host "✅ Tìm thấy psql tại: $psqlPath" -ForegroundColor Green
+Write-Host "OK: Tim thay psql tai: $psqlPath" -ForegroundColor Green
 
 $dbName = "elearning"
-$dbUser = "elearn"
+# Thử dùng postgres user trước, nếu không được thì dùng elearn
+$dbUser = "postgres"
 $projectRoot = Split-Path -Parent $PSScriptRoot
 
-# Danh sách các file migration BẮT BUỘC (theo thứ tự)
+# Danh sach cac file migration BAT BUOC (theo thu tu)
 $migrations = @(
-    @{ File = "schema_pg.sql"; Name = "Schema cơ bản (bảng users, khoa_hoc, ...)" },
-    @{ File = "create_enrollment_table.sql"; Name = "Bảng đăng ký khóa học" },
-    @{ File = "create_notifications_table.sql"; Name = "Bảng thông báo" },
-    @{ File = "create_payment_table.sql"; Name = "Bảng thanh toán" },
-    @{ File = "add_lesson_resources.sql"; Name = "Thêm cột tài liệu cho bài học" },
-    @{ File = "add_diem_toi_da_to_bai_tap.sql"; Name = "Thêm cột điểm tối đa cho bài tập" }
+    @{ File = "schema_pg.sql"; Name = "Schema co ban (bang users, khoa_hoc, ...)" },
+    @{ File = "create_enrollment_table.sql"; Name = "Bang dang ky khoa hoc" },
+    @{ File = "create_notifications_table.sql"; Name = "Bang thong bao" },
+    @{ File = "create_payment_table.sql"; Name = "Bang thanh toan" },
+    @{ File = "add_lesson_resources.sql"; Name = "Them cot tai lieu cho bai hoc" },
+    @{ File = "add_diem_toi_da_to_bai_tap.sql"; Name = "Them cot diem toi da cho bai tap" },
+    @{ File = "create_deposit_transactions.sql"; Name = "Bang giao dich nap tien" },
+    @{ File = "add_deposit_fields.sql"; Name = "Them cac cot cho bang deposit_transactions" },
+    @{ File = "add_user_balance.sql"; Name = "Them cot so du cho bang users" }
 )
 
-Write-Host "`n📋 Sẽ chạy các migrations sau:" -ForegroundColor Yellow
+Write-Host ""
+Write-Host "Se chay cac migrations sau:" -ForegroundColor Yellow
 foreach ($migration in $migrations) {
     Write-Host "   - $($migration.Name)" -ForegroundColor Gray
 }
 
-$confirm = Read-Host "`nBạn có muốn tiếp tục? (y/n)"
+$confirm = Read-Host "`nBan co muon tiep tuc? (y/n)"
 if ($confirm -ne "y" -and $confirm -ne "Y") {
-    Write-Host "Đã hủy." -ForegroundColor Yellow
+    Write-Host "Da huy." -ForegroundColor Yellow
     exit 0
 }
 
-Write-Host "`n🚀 Bắt đầu chạy migrations...`n" -ForegroundColor Green
+Write-Host ""
+Write-Host "Bat dau chay migrations..." -ForegroundColor Green
+Write-Host ""
 
 foreach ($migration in $migrations) {
-    $filePath = Join-Path $projectRoot "database" $migration.File
+    $filePath = Join-Path $projectRoot (Join-Path "database" $migration.File)
     
     if (-not (Test-Path $filePath)) {
-        Write-Host "⚠️  File không tồn tại: $($migration.File)" -ForegroundColor Yellow
+        Write-Host "Canh bao: File khong ton tai: $($migration.File)" -ForegroundColor Yellow
         continue
     }
     
-    Write-Host "📄 Đang chạy: $($migration.Name)..." -ForegroundColor Cyan
+    Write-Host "Dang chay: $($migration.Name)..." -ForegroundColor Cyan
     Write-Host "   File: $($migration.File)" -ForegroundColor Gray
     
     & $psqlPath -U $dbUser -d $dbName -f $filePath
     
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "❌ Lỗi khi chạy $($migration.File)!" -ForegroundColor Red
-        Write-Host "   Vui lòng kiểm tra lại và chạy thủ công." -ForegroundColor Yellow
+        Write-Host "LOI: Khi chay $($migration.File)!" -ForegroundColor Red
+        Write-Host "   Vui long kiem tra lai va chay thu cong." -ForegroundColor Yellow
         exit 1
     }
     
-    Write-Host "✅ Hoàn thành: $($migration.Name)`n" -ForegroundColor Green
+    Write-Host "Hoan thanh: $($migration.Name)" -ForegroundColor Green
+    Write-Host ""
 }
 
-Write-Host "`n========================================" -ForegroundColor Green
-Write-Host "  ✅ HOÀN THÀNH TẤT CẢ MIGRATIONS!" -ForegroundColor Green
-Write-Host "========================================`n" -ForegroundColor Green
-
-Write-Host "💡 Tiếp theo:" -ForegroundColor Cyan
-Write-Host "   - Chạy seed data (tùy chọn): .\scripts\setup-database.ps1" -ForegroundColor White
-Write-Host "   - Hoặc xem: docs\DATABASE_SETUP.md" -ForegroundColor White
+Write-Host ""
+Write-Host "========================================" -ForegroundColor Green
+Write-Host "  HOAN THANH TAT CA MIGRATIONS!" -ForegroundColor Green
+Write-Host "========================================" -ForegroundColor Green
 Write-Host ""
 
+Write-Host "Tiep theo:" -ForegroundColor Cyan
+Write-Host "   - Chay seed data (tuy chon): .\scripts\setup-database.ps1" -ForegroundColor White
+Write-Host "   - Hoac xem: docs\DATABASE_SETUP.md" -ForegroundColor White
+Write-Host ""

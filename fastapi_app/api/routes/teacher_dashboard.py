@@ -109,12 +109,22 @@ def get_pending_submissions(
     if not assignment_ids:
         return []
     
-    # Lấy tất cả submissions chưa được chấm (diem is None hoặc trang_thai = 'submitted')
+    # Lấy tất cả submissions của các bài tập này (để debug)
+    all_submissions = db.query(Submission).filter(
+        Submission.bai_tap_id.in_(assignment_ids)
+    ).all()
+    print(f"[DEBUG] Teacher {current_user.id}: Total submissions: {len(all_submissions)}")
+    for sub in all_submissions:
+        print(f"[DEBUG] Submission {sub.id}: bai_tap_id={sub.bai_tap_id}, diem={sub.diem}, trang_thai={sub.trang_thai}, user_id={sub.user_id}")
+    
+    # Lấy tất cả submissions chưa được chấm (diem is None)
+    # Đơn giản: chỉ cần kiểm tra diem is None, vì khi chấm bài sẽ set diem và đổi trang_thai thành 'graded'
     pending_submissions = db.query(Submission).filter(
         Submission.bai_tap_id.in_(assignment_ids),
-        Submission.trang_thai.in_(['submitted', 'pending']),
         Submission.diem.is_(None)
     ).order_by(Submission.ngay_nop.desc()).all()
+    
+    print(f"[DEBUG] Teacher {current_user.id}: Found {len(pending_submissions)} pending submissions")
     
     result = []
     for submission in pending_submissions:
