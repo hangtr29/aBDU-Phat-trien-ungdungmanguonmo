@@ -1,8 +1,10 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 import json
 import os
 
@@ -104,6 +106,24 @@ def create_app() -> FastAPI:
         thread = threading.Thread(target=periodic_check, daemon=True)
         thread.start()
 
+    # Exception handler để đảm bảo /api/courses luôn trả về array
+    @app.exception_handler(Exception)
+    async def global_exception_handler(request: Request, exc: Exception):
+        # Nếu là endpoint /api/courses, luôn trả về array rỗng
+        if request.url.path == "/api/courses":
+            print(f"Exception in /api/courses: {exc}")
+            import traceback
+            traceback.print_exc()
+            return JSONResponse(
+                status_code=200,
+                content=[]
+            )
+        # Các endpoint khác xử lý bình thường
+        return JSONResponse(
+            status_code=500,
+            content={"detail": str(exc)}
+        )
+    
     @app.get("/health")
     def health():
         return {"status": "ok"}
