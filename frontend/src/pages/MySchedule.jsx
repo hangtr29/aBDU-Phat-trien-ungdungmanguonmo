@@ -210,8 +210,8 @@ export default function MySchedule() {
                               <div className="d-flex align-items-center">
                                 <i className="bi bi-mortarboard text-info me-2"></i>
                                 <span className="small me-1">Khóa học:</span>
-                                <Link to={`/courses/${schedule.khoa_hoc_id}`} className="text-decoration-none fw-semibold">
-                                  {schedule.khoa_hoc.tieu_de || 'N/A'}
+                                <Link to={`/courses/${schedule.khoa_hoc_id}`} className="text-decoration-none fw-semibold" style={{ wordBreak: 'break-word' }}>
+                                  {String(schedule.khoa_hoc?.tieu_de || 'N/A')}
                                 </Link>
                               </div>
                             )}
