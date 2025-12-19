@@ -262,17 +262,17 @@ export default function CourseScheduleManager({ courseId, courseTitle }) {
                     </div>
                   </div>
                   <div className="card-body p-3">
-                    <div className="mb-3">
-                      <div className="d-flex align-items-center mb-2">
+                    <div className="d-flex flex-wrap align-items-center gap-3 mb-3">
+                      <div className="d-flex align-items-center">
                         <i className="bi bi-calendar-check text-primary me-2"></i>
-                        <span className="fw-semibold" style={{ fontSize: '0.9rem' }}>
+                        <span className="fw-semibold">
                           {formatDateOnly(schedule.ngay_hoc)}
                         </span>
                       </div>
                       {schedule.thoi_gian_bat_dau && schedule.thoi_gian_ket_thuc ? (
                         <div className="d-flex align-items-center">
                           <i className="bi bi-clock text-success me-2"></i>
-                          <span className="badge bg-success-subtle text-success-emphasis px-3 py-2" style={{ fontSize: '0.9rem' }}>
+                          <span className="schedule-time-badge">
                             <strong>{schedule.thoi_gian_bat_dau}</strong> - <strong>{schedule.thoi_gian_ket_thuc}</strong>
                           </span>
                         </div>

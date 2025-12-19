@@ -186,8 +186,8 @@ export default function MySchedule() {
                           </div>
                         </div>
                         <div className="card-body p-3">
-                          <div className="mb-3">
-                            <div className="d-flex align-items-center mb-2">
+                          <div className="d-flex flex-wrap align-items-center gap-3 mb-3">
+                            <div className="d-flex align-items-center">
                               <i className="bi bi-calendar-check text-primary me-2"></i>
                               <span className="fw-semibold">
                                 {formatDate(schedule.ngay_hoc)}
@@ -206,17 +206,16 @@ export default function MySchedule() {
                                 <span className="text-muted small">lúc {formatTime(schedule.ngay_hoc)}</span>
                               </div>
                             )}
+                            {schedule.khoa_hoc && (
+                              <div className="d-flex align-items-center">
+                                <i className="bi bi-mortarboard text-info me-2"></i>
+                                <span className="small me-1">Khóa học:</span>
+                                <Link to={`/courses/${schedule.khoa_hoc_id}`} className="text-decoration-none fw-semibold">
+                                  {schedule.khoa_hoc.tieu_de || 'N/A'}
+                                </Link>
+                              </div>
+                            )}
                           </div>
-                          
-                          {schedule.khoa_hoc && (
-                            <div className="mb-3">
-                              <i className="bi bi-mortarboard text-info me-2"></i>
-                              <span className="small">Khóa học: </span>
-                              <Link to={`/courses/${schedule.khoa_hoc_id}`} className="text-decoration-none fw-semibold">
-                                {schedule.khoa_hoc.tieu_de}
-                              </Link>
-                            </div>
-                          )}
 
                           {upcoming && schedule.link_google_meet && (
                             <div className="d-grid gap-2 mt-3">
