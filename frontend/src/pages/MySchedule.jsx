@@ -26,13 +26,38 @@ export default function MySchedule() {
   }
 
   const formatDate = (dateStr) => {
-    const date = new Date(dateStr)
-    return date.toLocaleDateString('vi-VN', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    })
+    try {
+      const date = new Date(dateStr)
+      // Thử format với locale vi-VN, nếu không được thì dùng fallback
+      const formatted = date.toLocaleDateString('vi-VN', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      })
+      // Kiểm tra xem có ký tự lạ không (dấu hiệu encoding sai)
+      if (formatted.includes('?') || formatted.length < 10) {
+        // Fallback: format thủ công
+        const weekdays = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy']
+        const months = ['tháng 1', 'tháng 2', 'tháng 3', 'tháng 4', 'tháng 5', 'tháng 6', 'tháng 7', 'tháng 8', 'tháng 9', 'tháng 10', 'tháng 11', 'tháng 12']
+        const weekday = weekdays[date.getDay()]
+        const day = date.getDate()
+        const month = months[date.getMonth()]
+        const year = date.getFullYear()
+        return `${weekday}, ${day} ${month}, ${year}`
+      }
+      return formatted
+    } catch (error) {
+      // Fallback nếu có lỗi
+      const date = new Date(dateStr)
+      const weekdays = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy']
+      const months = ['tháng 1', 'tháng 2', 'tháng 3', 'tháng 4', 'tháng 5', 'tháng 6', 'tháng 7', 'tháng 8', 'tháng 9', 'tháng 10', 'tháng 11', 'tháng 12']
+      const weekday = weekdays[date.getDay()]
+      const day = date.getDate()
+      const month = months[date.getMonth()]
+      const year = date.getFullYear()
+      return `${weekday}, ${day} ${month}, ${year}`
+    }
   }
 
   const formatDateTime = (dateStr) => {
@@ -86,7 +111,7 @@ export default function MySchedule() {
   }
 
   return (
-    <div className="container my-5" style={{ fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
+    <div className="container my-5" style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" }}>
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h1 className="title-gradient mb-0">
           <i className="bi bi-calendar-event me-2"></i> Thời khóa biểu của tôi
