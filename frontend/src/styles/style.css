@@ -93,6 +93,20 @@ h1, h2, h3, h4, h5, h6, p, span, div, a, button, input, textarea, select, label,
     display: inline-flex !important;
     align-items: center !important;
     gap: 6px !important;
+    white-space: nowrap !important;
+}
+
+/* Đảm bảo thông tin lịch học nằm trên cùng 1 hàng */
+.schedule-info-row {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 16px !important;
+}
+
+.schedule-info-row > div {
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
 }
 
 .schedule-date-header {

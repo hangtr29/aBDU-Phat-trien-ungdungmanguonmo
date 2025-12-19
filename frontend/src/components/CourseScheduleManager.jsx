@@ -262,7 +262,7 @@ export default function CourseScheduleManager({ courseId, courseTitle }) {
                     </div>
                   </div>
                   <div className="card-body p-3">
-                    <div className="d-flex flex-wrap align-items-center gap-3 mb-3">
+                    <div className="schedule-info-row mb-3">
                       <div className="d-flex align-items-center">
                         <i className="bi bi-calendar-check text-primary me-2"></i>
                         <span className="fw-semibold">
