@@ -14,6 +14,7 @@ import Certificate from './pages/Certificate'
 import AddFunds from './pages/AddFunds'
 import TransactionGuide from './pages/TransactionGuide'
 import SecurityPolicy from './pages/SecurityPolicy'
+import MySchedule from './pages/MySchedule'
 import Layout from './components/Layout'
 import { AuthProvider } from './context/AuthContext'
 
@@ -52,6 +53,7 @@ function App() {
             <Route path="addfunds" element={<AddFunds />} />
             <Route path="transaction-guide" element={<TransactionGuide />} />
             <Route path="security-policy" element={<SecurityPolicy />} />
+            <Route path="my-schedule" element={<MySchedule />} />
             <Route path="dashboard" element={<DashboardRouter />} />
           </Route>
         </Routes>

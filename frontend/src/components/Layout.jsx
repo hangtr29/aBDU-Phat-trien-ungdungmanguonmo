@@ -62,14 +62,24 @@ export default function Layout() {
                   </Link>
                 </li>
                 {user && user.vai_tro === 'student' && (
-                  <li className="nav-item">
-                    <Link 
-                      className="nav-link px-3 py-2 rounded bg-gradient-sky-green-light text-brand-sky fw-semibold border border-brand-sky-200" 
-                      to="/dashboard"
-                    >
-                      <i className="bi bi-book"></i> Khóa học của tôi
-                    </Link>
-                  </li>
+                  <>
+                    <li className="nav-item">
+                      <Link 
+                        className="nav-link px-3 py-2 rounded bg-gradient-sky-green-light text-brand-sky fw-semibold border border-brand-sky-200" 
+                        to="/dashboard"
+                      >
+                        <i className="bi bi-book"></i> Khóa học của tôi
+                      </Link>
+                    </li>
+                    <li className="nav-item">
+                      <Link 
+                        className="nav-link px-3 py-2 rounded bg-gradient-sky-green-light text-brand-sky fw-semibold border border-brand-sky-200" 
+                        to="/my-schedule"
+                      >
+                        <i className="bi bi-calendar-event"></i> Thời khóa biểu
+                      </Link>
+                    </li>
+                  </>
                 )}
                 {user && user.vai_tro === 'teacher' && (
                   <li className="nav-item">

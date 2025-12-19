@@ -4,6 +4,7 @@ import axios from 'axios'
 import { useAuth } from '../context/AuthContext'
 import ReviewSection from '../components/ReviewSection'
 import PaymentModal from '../components/PaymentModal'
+import CourseScheduleManager from '../components/CourseScheduleManager'
 
 export default function CourseDetail() {
   const { id } = useParams()
@@ -348,6 +349,13 @@ export default function CourseDetail() {
               </div>
             )}
           </div>
+
+          {/* Thời khóa biểu - Chỉ hiển thị cho giáo viên hoặc học sinh đã đăng ký */}
+          {(user?.role === 'teacher' && course.teacher_id === user.id) || (isEnrolled && user?.role === 'student') ? (
+            <div className="card-soft mt-4">
+              <CourseScheduleManager courseId={parseInt(id)} courseTitle={course.tieu_de} />
+            </div>
+          ) : null}
 
           {/* Reviews Section */}
           <div className="card-soft mt-4">
