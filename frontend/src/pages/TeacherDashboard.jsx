@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import axios from 'axios'
 import { useAuth } from '../context/AuthContext'
+import CourseScheduleManager from '../components/CourseScheduleManager'
 
 export default function TeacherDashboard() {
   const { user } = useAuth()
@@ -124,6 +125,14 @@ export default function TeacherDashboard() {
             {pendingSubmissions.length > 0 && (
               <span className="badge bg-danger ms-2">{pendingSubmissions.length}</span>
             )}
+          </button>
+        </li>
+        <li className="nav-item">
+          <button
+            className={`nav-link ${activeTab === 'schedule' ? 'active' : ''}`}
+            onClick={() => setActiveTab('schedule')}
+          >
+            <i className="bi bi-calendar-event"></i> Thời khóa biểu
           </button>
         </li>
       </ul>
@@ -315,6 +324,28 @@ export default function TeacherDashboard() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tab: Thời khóa biểu */}
+      {activeTab === 'schedule' && (
+        <div className="card-soft">
+          <h5 className="mb-4">
+            <i className="bi bi-calendar-event text-brand-sky me-2"></i>Thời khóa biểu các khóa học
+          </h5>
+          {courses.length === 0 ? (
+            <div className="alert alert-info">
+              <i className="bi bi-info-circle"></i> Bạn chưa có khóa học nào. Hãy tạo khóa học để quản lý thời khóa biểu.
+            </div>
+          ) : (
+            <div>
+              {courses.map((course) => (
+                <div key={course.id} className="mb-4">
+                  <CourseScheduleManager courseId={course.id} courseTitle={course.tieu_de} />
+                </div>
+              ))}
             </div>
           )}
         </div>

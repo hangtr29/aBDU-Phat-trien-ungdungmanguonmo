@@ -41,7 +41,11 @@ def get_teacher_students(
     
     result = []
     for enrollment in enrollments:
-        student = db.query(User).filter(User.id == enrollment.user_id).first()
+        # Enrollment có thể dùng student_id hoặc user_id tùy model
+        student_id = getattr(enrollment, 'student_id', None) or getattr(enrollment, 'user_id', None)
+        if not student_id:
+            continue
+        student = db.query(User).filter(User.id == student_id).first()
         if not student:
             continue
         
@@ -59,7 +63,7 @@ def get_teacher_students(
         # Lấy số bài học đã hoàn thành
         from ...models.progress import Progress
         completed_lessons = db.query(func.count(Progress.id)).filter(
-            Progress.user_id == enrollment.user_id,
+            Progress.user_id == student_id,
             Progress.khoa_hoc_id == enrollment.khoa_hoc_id,
             Progress.completed == True
         ).scalar() or 0
