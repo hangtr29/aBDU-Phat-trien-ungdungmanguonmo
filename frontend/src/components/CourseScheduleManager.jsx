@@ -283,41 +283,18 @@ export default function CourseScheduleManager({ courseId, courseTitle }) {
                         </div>
                       )}
                     </div>
-                    {schedule.mo_ta && (
-                      <p className="text-muted mb-3 small" style={{ lineHeight: '1.6' }}>{schedule.mo_ta}</p>
-                    )}
                     {schedule.link_google_meet && (
-                      <div className="mb-2">
+                      <div className="mt-3">
                         <a
                           href={schedule.link_google_meet}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="btn btn-sm btn-danger fw-semibold"
-                          style={{ borderRadius: '6px' }}
+                          className="btn btn-danger fw-semibold w-100"
+                          style={{ borderRadius: '8px', fontSize: '1rem', padding: '12px' }}
                         >
-                          <i className="bi bi-camera-video-fill me-1"></i>
-                          Vào Google Meet
+                          <i className="bi bi-camera-video-fill me-2"></i>
+                          Vào lớp học ngay (Google Meet)
                         </a>
-                      </div>
-                    )}
-                    {schedule.link_zoom && (
-                      <div className="mb-2">
-                        <a
-                          href={schedule.link_zoom}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="btn btn-sm btn-info fw-semibold"
-                          style={{ borderRadius: '6px' }}
-                        >
-                          <i className="bi bi-camera-video me-1"></i>
-                          Vào Zoom
-                        </a>
-                      </div>
-                    )}
-                    {schedule.ghi_chu && (
-                      <div className="alert alert-info py-2 mb-0" style={{ fontSize: '0.85rem' }}>
-                        <i className="bi bi-info-circle me-1"></i>
-                        <strong>Ghi chú:</strong> {schedule.ghi_chu}
                       </div>
                     )}
                   </div>
