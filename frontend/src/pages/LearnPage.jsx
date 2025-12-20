@@ -764,7 +764,7 @@ function AssignmentsSection({ courseId, isTeacher }) {
                   </label>
                   <div>
                     <a 
-                      href={assignment.file_path.startsWith('http') ? assignment.file_path : `http://127.0.0.1:8001${assignment.file_path}`}
+                      href={assignment.file_path.startsWith('http') ? assignment.file_path : `${import.meta.env.VITE_API_BASE_URL || ''}${assignment.file_path}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="btn btn-outline-primary btn-sm"
@@ -1455,7 +1455,7 @@ export default function LearnPage() {
                                     {lesson.tai_lieu_pdf ? (
                                       <div className="mb-3">
                                         <a 
-                                          href={lesson.tai_lieu_pdf.startsWith('http') ? lesson.tai_lieu_pdf : `http://localhost:8001${lesson.tai_lieu_pdf}`}
+                                          href={lesson.tai_lieu_pdf.startsWith('http') ? lesson.tai_lieu_pdf : `${import.meta.env.VITE_API_BASE_URL || ''}${lesson.tai_lieu_pdf}`}
                                           target="_blank" 
                                           rel="noopener noreferrer"
                                           className="btn btn-outline-primary btn-sm"
